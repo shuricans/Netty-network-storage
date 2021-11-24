@@ -6,7 +6,7 @@
 
     <parent>
         <artifactId>root</artifactId>
-        <groupId>ru.gb.network-storage</groupId>
+        <groupId>ru.gb.storage</groupId>
         <version>DEV-SNAPSHOT</version>
     </parent>
 

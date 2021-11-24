@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
 
-    <groupId>ru.gb.network-storage</groupId>
+    <groupId>ru.gb.storage</groupId>
     <artifactId>root</artifactId>
     <version>DEV-SNAPSHOT</version>
     <description>Template for network storage</description>
@@ -12,6 +12,7 @@
 
     <properties>
         <java.version>11</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <modules>

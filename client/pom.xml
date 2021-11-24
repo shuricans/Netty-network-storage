@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>ru.gb.network-storage</groupId>
         <artifactId>root</artifactId>
+        <groupId>ru.gb.storage</groupId>
         <version>DEV-SNAPSHOT</version>
     </parent>
 
@@ -49,6 +49,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>2.5.6</version>
                 <executions>
                     <execution>
                         <goals>
