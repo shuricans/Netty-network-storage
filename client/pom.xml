@@ -19,7 +19,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>ru.gb.network-storage</groupId>
+            <groupId>ru.gb.storage</groupId>
             <artifactId>commons</artifactId>
             <version>DEV-SNAPSHOT</version>
         </dependency>
