@@ -8,18 +8,28 @@ import java.util.Properties;
 
 public class ConfigProperties {
 
-    private static final String FILE_CONFIG_PROP = "config.properties";
+    private static final String FILE_COMMON_PROP = "common.properties";
+    private static final String FILE_HIKARI_PROP = "hikari.properties";
     private static Properties prop;
+    private static Properties hikariProp;
+
 
     static {
-        try (InputStream input = ConfigProperties.class.getClassLoader().getResourceAsStream(FILE_CONFIG_PROP)) {
+        try (InputStream inCommon = ConfigProperties.class.getClassLoader().getResourceAsStream(FILE_COMMON_PROP);
+             InputStream inHikari = ConfigProperties.class.getClassLoader().getResourceAsStream(FILE_HIKARI_PROP)) {
 
-            if (input == null) {
-                throw new FileNotFoundException(String.format("Unable to find \"%s\"", FILE_CONFIG_PROP));
+            if (inCommon == null) {
+                throw new FileNotFoundException(String.format("Unable to find \"%s\"", FILE_COMMON_PROP));
+            }
+            if (inHikari == null) {
+                throw new FileNotFoundException(String.format("Unable to find \"%s\"", FILE_HIKARI_PROP));
             }
 
             prop = new Properties();
-            prop.load(input);
+            prop.load(inCommon);
+
+            hikariProp = new Properties();
+            hikariProp.load(inHikari);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -28,6 +38,10 @@ public class ConfigProperties {
 
     public static Optional<String> getPropertyValue(String propertyKey) {
         return Optional.ofNullable(prop.getProperty(propertyKey));
+    }
+
+    protected static Properties getHikariProperties() {
+        return hikariProp;
     }
 
 }
