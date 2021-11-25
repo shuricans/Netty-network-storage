@@ -19,6 +19,7 @@
         <lombok.version>1.18.22</lombok.version>
         <HikariCP.version>5.0.0</HikariCP.version>
         <postgresql.version>42.2.23</postgresql.version>
+        <netty.version>4.1.70.Final</netty.version>
     </properties>
 
     <dependencies>
@@ -54,8 +55,18 @@
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
         </dependency>
-
-
+        <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <!-- Commons -->
+        <dependency>
+            <groupId>ru.gb.storage</groupId>
+            <artifactId>commons</artifactId>
+            <version>DEV-SNAPSHOT</version>
+        </dependency>
 
     </dependencies>
 
@@ -71,7 +82,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
-                            <mainClass>ru.gb.storage.server.Server</mainClass>
+                            <mainClass>ru.gb.storage.server.App</mainClass>
                         </configuration>
                     </execution>
                 </executions>
