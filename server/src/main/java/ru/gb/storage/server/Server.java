@@ -55,7 +55,7 @@ public final class Server {
                                     new LengthFieldPrepender(3),
                                     new JsonDecoder(),
                                     new JsonEncoder(),
-                                    new ServerMessageHandler(executorService, authService)
+                                    new ServerMessageHandler(executorService, authService, userService)
                             );
                         }
                     });
