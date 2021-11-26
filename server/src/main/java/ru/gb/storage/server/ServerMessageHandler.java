@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import ru.gb.storage.commons.message.*;
 import ru.gb.storage.model.User;
 import ru.gb.storage.service.AuthService;
+import ru.gb.storage.service.UserService;
 
 import java.util.concurrent.Executor;
 
@@ -14,6 +15,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
 
     private final Executor executor;
     private final AuthService authService;
+    private final UserService userService;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) throws Exception {
@@ -32,8 +34,11 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                     message.setSuccess(true);
                     break;
                 case UP:
-
-                    //TODO
+                    final User newUser = new User();
+                    newUser.setLogin(message.getLogin());
+                    newUser.setPassword(message.getPassword());
+                    final boolean addSuccess = userService.addNewUser(newUser);
+                    message.setSuccess(addSuccess);
                     break;
                 default:
             }
