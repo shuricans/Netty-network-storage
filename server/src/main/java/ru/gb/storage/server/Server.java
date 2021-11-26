@@ -10,8 +10,19 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.gb.storage.commons.handler.JsonDecoder;
 import ru.gb.storage.commons.handler.JsonEncoder;
+import ru.gb.storage.dao.UserDao;
+import ru.gb.storage.dao.UserDaoImpl;
+import ru.gb.storage.service.AuthService;
+import ru.gb.storage.service.AuthServiceImpl;
+import ru.gb.storage.service.UserService;
+import ru.gb.storage.service.UserServiceImpl;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public final class Server {
@@ -26,6 +37,11 @@ public final class Server {
         // Configure the server.
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final UserDao userDao = new UserDaoImpl();
+        final PasswordEncoder encoder = new BCryptPasswordEncoder();
+        final UserService userService = new UserServiceImpl(userDao, encoder);
+        final AuthService authService = new AuthServiceImpl(userService, encoder);
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
@@ -38,8 +54,8 @@ public final class Server {
                                     new LengthFieldBasedFrameDecoder(1024 * 1024, 0, 3, 0, 3),
                                     new LengthFieldPrepender(3),
                                     new JsonDecoder(),
-                                    new JsonEncoder()
-//                                    new ServerMessageHandler()
+                                    new JsonEncoder(),
+                                    new ServerMessageHandler(executorService, authService)
                             );
                         }
                     });
@@ -56,6 +72,7 @@ public final class Server {
             // Shut down all event loops to terminate all threads.
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            executorService.shutdownNow();
         }
     }
 }
