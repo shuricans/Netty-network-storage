@@ -82,7 +82,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
-                            <mainClass>ru.gb.storage.server.App</mainClass>
+                            <mainClass>ru.gb.storage.App</mainClass>
                         </configuration>
                     </execution>
                 </executions>

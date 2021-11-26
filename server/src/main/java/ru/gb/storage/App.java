@@ -1,5 +1,6 @@
-package ru.gb.storage.server;
+package ru.gb.storage;
 
+import ru.gb.storage.server.Server;
 import ru.gb.storage.service.ConfigProperties;
 
 public final class App {
