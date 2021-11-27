@@ -13,15 +13,19 @@ import ru.gb.storage.commons.handler.JsonDecoder;
 import ru.gb.storage.commons.handler.JsonEncoder;
 import ru.gb.storage.commons.message.Message;
 
+import java.util.concurrent.LinkedBlockingQueue;
+
 public final class Client implements Runnable {
 
     private final int port;
     private final String inetHost;
+    private final LinkedBlockingQueue<Message> messagesQueue;
     private SocketChannel channel;
 
-    public Client(String inetHost, int port) {
+    public Client(String inetHost, int port, LinkedBlockingQueue<Message> messagesQueue) {
         this.port = port;
         this.inetHost = inetHost;
+        this.messagesQueue = messagesQueue;
     }
 
     @Override
@@ -41,7 +45,7 @@ public final class Client implements Runnable {
                                     new LengthFieldPrepender(3),
                                     new JsonDecoder(),
                                     new JsonEncoder(),
-                                    new ClientMessageHandler()
+                                    new ClientMessageHandler(messagesQueue)
                             );
                         }
                     });

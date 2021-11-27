@@ -7,11 +7,14 @@ import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import ru.gb.storage.client.netty.Client;
+import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.client.ui.controller.ScreenController;
+import ru.gb.storage.commons.message.Message;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class App extends Application {
 
@@ -19,6 +22,8 @@ public class App extends Application {
     private Client client;
     private ScreenController screenController;
     private LoginController loginController;
+    private ExplorerController explorerController;
+    private final LinkedBlockingQueue<Message> messagesQueue = new LinkedBlockingQueue<>();
 
     public static void main(String[] args) {
         Application.launch(args);
@@ -35,16 +40,24 @@ public class App extends Application {
         screenController.add("login", (Pane) object);
 
         loginController.setClient(client);
+        loginController.setMessagesQueue(messagesQueue);
+        loginController.setScreenController(screenController);
+
+        loader = new FXMLLoader(getClass().getResource("/explorer.fxml"));
+        screenController.add("explorer", loader.load());
+        explorerController = loader.getController();
 
         stage.setTitle("Netty-network-storage");
         stage.setScene(scene);
         stage.show();
+
+        loginController.auth();
     }
 
 
     @Override
     public void init() throws Exception {
-        client = new Client("localhost", 9000);
+        client = new Client("localhost", 9000, messagesQueue);
         executorService = Executors.newSingleThreadExecutor();
         executorService.execute(client);
     }
