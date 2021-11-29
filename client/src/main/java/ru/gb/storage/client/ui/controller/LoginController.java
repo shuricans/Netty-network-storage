@@ -71,7 +71,7 @@ public class LoginController implements Initializable {
         authService.start();
     }
 
-    public void sendAuth(ActionEvent actionEvent) {
+    public void sendAuth() {
         final String login = loginField.getText().trim();
         final String password = passwordField.getText();
 

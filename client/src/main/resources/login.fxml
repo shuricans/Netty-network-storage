@@ -13,7 +13,7 @@
       xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ru.gb.storage.client.ui.controller.LoginController">
-    <TextField fx:id="loginField" prefWidth="250.0" promptText="login">
+    <TextField fx:id="loginField" onAction="#sendAuth" prefWidth="250.0" promptText="login">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
@@ -21,7 +21,7 @@
             <Font size="18.0" />
         </font>
     </TextField>
-    <PasswordField fx:id="passwordField" prefWidth="250.0" promptText="password">
+    <PasswordField fx:id="passwordField" onAction="#sendAuth" prefWidth="250.0" promptText="password">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
