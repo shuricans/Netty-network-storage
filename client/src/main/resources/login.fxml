@@ -6,48 +6,27 @@
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" fillWidth="false"
-      prefHeight="600.0" prefWidth="800.0"
-      xmlns="http://javafx.com/javafx"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="ru.gb.storage.client.ui.controller.LoginController">
+<VBox fx:id="rootVBox" alignment="CENTER" fillWidth="false" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.gb.storage.client.ui.controller.LoginController" stylesheets="css/login.css">
     <TextField fx:id="loginField" onAction="#sendAuth" prefWidth="250.0" promptText="login">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
-        <font>
-            <Font size="18.0" />
-        </font>
     </TextField>
     <PasswordField fx:id="passwordField" onAction="#sendAuth" prefWidth="250.0" promptText="password">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
-        <font>
-            <Font size="18.0" />
-        </font>
     </PasswordField>
     <Button fx:id="buttonSignIn" onAction="#sendAuth" prefHeight="39.0" prefWidth="250.0" text="Sign In">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
-        <font>
-            <Font size="18.0" />
-        </font>
     </Button>
     <Button fx:id="buttonSignUp" prefHeight="39.0" prefWidth="250.0" text="Sign Up">
         <VBox.margin>
             <Insets bottom="40.0" />
         </VBox.margin>
-        <font>
-            <Font size="18.0" />
-        </font>
     </Button>
-    <Label fx:id="infoLabel" textFill="RED">
-        <font>
-            <Font size="18.0" />
-        </font>
-    </Label>
+    <Label fx:id="infoLabel" textFill="RED"/>
 </VBox>
