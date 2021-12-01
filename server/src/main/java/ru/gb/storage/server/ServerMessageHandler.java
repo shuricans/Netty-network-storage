@@ -120,6 +120,12 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         newUser.setPassword(message.getPassword());
 
         final long newUserId = userService.addNewUser(newUser);
+
+        if (newUserId < 0) {
+            message.setSuccess(false);
+            message.setInfo("Failed to create new user");
+            return;
+        }
         newUser.setId(newUserId);
 
         // create new Storage for new User
@@ -127,21 +133,13 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
 
         // create root directory for new User
         final File rootDir = new File();
-        rootDir.setName(UUID.randomUUID().toString());
-        rootDir.setPath(FileManager.generatePath(rootDir.getName()).toString());
+        rootDir.setName("rootPackage_" + newUserId);
+        rootDir.setPath("");
         rootDir.setStorageId(newStorage.getId());
         rootDir.setSize(FileManager.DIRECTORY_SIZE);
         rootDir.setIsDirectory(true);
         rootDir.setParentId(null);
         final long rootDirId = fileService.addNewFile(rootDir);
-        try {
-            Files.createDirectories(Paths.get(rootDir.getPath()));
-        } catch (IOException e) {
-            e.printStackTrace();
-            message.setSuccess(false);
-            message.setInfo("Can't create remote directory, io error...");
-            return;
-        }
         message.setSuccess(newUserId > 0);
         String info = newStorage.getId() + ":" + rootDirId;
         message.setInfo(info);
