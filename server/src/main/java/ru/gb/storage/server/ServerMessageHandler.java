@@ -34,11 +34,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             var message = (SignMessage) msg;
             switch (message.getType()) {
                 case IN:
-                    final User user = new User();
-                    user.setLogin(message.getLogin());
-                    user.setPassword(message.getPassword());
-                    final boolean authIsSuccess = authService.auth(user);
-                    message.setSuccess(authIsSuccess);
+                    signIn(message);
                     break;
                 case OUT:
                     message.setSuccess(true);
@@ -53,11 +49,27 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         }
     }
 
+    private void signIn(SignMessage message) {
+        final User user = new User();
+        user.setLogin(message.getLogin());
+        user.setPassword(message.getPassword());
+        final boolean authIsSuccess = authService.auth(user);
+        message.setSuccess(authIsSuccess);
+    }
+
     private void signUp(SignMessage message) {
         // create new User
         final User newUser = new User();
         newUser.setLogin(message.getLogin());
         newUser.setPassword(message.getPassword());
+
+        final User userByLogin = userService.getUserByLogin(message.getLogin());
+        if (userByLogin != null) {
+            message.setSuccess(false);
+            message.setInfo("This name [" + message.getLogin() + "] is taken, please try again.");
+            return;
+        }
+
         final long newUserId = userService.addNewUser(newUser);
         newUser.setId(newUserId);
 

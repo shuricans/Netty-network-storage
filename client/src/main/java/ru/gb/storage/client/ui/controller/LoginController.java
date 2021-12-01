@@ -57,7 +57,11 @@ public class LoginController implements Initializable {
                 var message = (SignMessage) newValue;
                 if (!message.isSuccess()) {
                     passwordField.clear();
-                    infoLabel.setText("Incorrect username or password.");
+                    if (message.getInfo() != null) {
+                        infoLabel.setText(message.getInfo());
+                    } else {
+                        infoLabel.setText("Incorrect username or password.");
+                    }
                 }
             }
         });
