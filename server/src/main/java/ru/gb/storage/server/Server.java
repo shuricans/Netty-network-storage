@@ -14,12 +14,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.gb.storage.commons.handler.JsonDecoder;
 import ru.gb.storage.commons.handler.JsonEncoder;
-import ru.gb.storage.dao.UserDao;
-import ru.gb.storage.dao.UserDaoImpl;
-import ru.gb.storage.service.AuthService;
-import ru.gb.storage.service.AuthServiceImpl;
-import ru.gb.storage.service.UserService;
-import ru.gb.storage.service.UserServiceImpl;
+import ru.gb.storage.dao.*;
+import ru.gb.storage.service.*;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -39,9 +35,14 @@ public final class Server {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         final ExecutorService executorService = Executors.newCachedThreadPool();
         final UserDao userDao = new UserDaoImpl();
+        final StorageDao storageDao = new StorageDaoImpl();
+        final FileDao fileDao = new FileDaoImpl();
         final PasswordEncoder encoder = new BCryptPasswordEncoder();
         final UserService userService = new UserServiceImpl(userDao, encoder);
         final AuthService authService = new AuthServiceImpl(userService, encoder);
+        final StorageService storageService = new StorageServiceImpl(storageDao);
+        final FileService fileService = new FileServiceImpl(fileDao);
+
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
@@ -55,7 +56,13 @@ public final class Server {
                                     new LengthFieldPrepender(3),
                                     new JsonDecoder(),
                                     new JsonEncoder(),
-                                    new ServerMessageHandler(executorService, authService, userService)
+                                    new ServerMessageHandler(
+                                            executorService,
+                                            authService,
+                                            userService,
+                                            storageService,
+                                            fileService
+                                    )
                             );
                         }
                     });

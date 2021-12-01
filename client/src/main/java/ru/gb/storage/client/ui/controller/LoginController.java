@@ -88,6 +88,24 @@ public class LoginController implements Initializable {
         client.sendMessage(signInMessage);
     }
 
+    public void sendSignUp() {
+        final String login = loginField.getText().trim();
+        final String password = passwordField.getText();
+
+        if (login.isEmpty() || password.isEmpty()) {
+            infoLabel.setText("Please type username and password.");
+            passwordField.clear();
+            return;
+        }
+
+        final SignMessage signUpMessage = new SignMessage();
+        signUpMessage.setType(Sign.UP);
+        signUpMessage.setLogin(login);
+        signUpMessage.setPassword(password);
+        client.sendMessage(signUpMessage);
+
+    }
+
     @AllArgsConstructor
     private static class AuthService extends Service<Message> {
 

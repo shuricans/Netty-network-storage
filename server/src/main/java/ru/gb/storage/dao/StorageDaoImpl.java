@@ -1,5 +1,6 @@
 package ru.gb.storage.dao;
 
+import ru.gb.storage.model.Storage;
 import ru.gb.storage.model.User;
 import ru.gb.storage.service.DataSource;
 
@@ -7,23 +8,22 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class UserDaoImpl implements UserDao {
+public class StorageDaoImpl implements StorageDao {
 
-    private static final String TABLE_NAME = "usr";
+    private static final String TABLE_NAME = "storage";
     private static final String COL_ID = "id";
-    private static final String COL_LOGIN = "login";
-    private static final String COL_PASSWORD = "password";
+    private static final String COL_USER_ID = "user_id";
+    private static final String COL_CAPACITY = "capacity";
     private static final String NEW_INDEX = "currval";
 
     private Connection conn;
     private PreparedStatement prs;
 
     @Override
-    public Optional<User> findById(long id) {
+    public Optional<Storage> findById(long id) {
         try {
             conn = DataSource.getConnection();
             prs = conn.prepareStatement(
@@ -35,10 +35,10 @@ public class UserDaoImpl implements UserDao {
 
             if (rs.next()) {
                 return Optional.of(
-                        new User(
+                        new Storage(
                                 rs.getLong(COL_ID),
-                                rs.getString(COL_LOGIN),
-                                rs.getString(COL_PASSWORD)
+                                rs.getLong(COL_CAPACITY),
+                                rs.getLong(COL_USER_ID)
                         )
                 );
             }
@@ -52,36 +52,13 @@ public class UserDaoImpl implements UserDao {
     }
 
     @Override
-    public List<User> findAll() {
-        List<User> users = null;
-        try {
-            conn = DataSource.getConnection();
-            prs = conn.prepareStatement(
-                    String.format("SELECT * FROM %s", TABLE_NAME));
-
-            final ResultSet rs = prs.executeQuery();
-
-            if (!rs.next()) {
-                return null;
-            }
-            users = new ArrayList<>();
-            while (rs.next()) {
-                users.add(new User(
-                        rs.getLong(COL_ID),
-                        rs.getString(COL_LOGIN),
-                        rs.getString(COL_PASSWORD)
-                ));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            disconnect();
-        }
-        return users;
+    public List<Storage> findAll() {
+        // not used right now
+        return null;
     }
 
     @Override
-    public long save(User user) {
+    public long save(Storage storage) {
         try {
             conn = DataSource.getConnection();
             prs = conn.prepareStatement(
@@ -90,12 +67,12 @@ public class UserDaoImpl implements UserDao {
                                     "(%s, %s) " +
                                     "VALUES (?, ?)",
                             TABLE_NAME,
-                            COL_LOGIN,
-                            COL_PASSWORD
+                            COL_USER_ID,
+                            COL_CAPACITY
                     ));
 
-            prs.setString(1, user.getLogin());
-            prs.setString(2, user.getPassword());
+            prs.setLong(1, storage.getUserId());
+            prs.setLong(2, storage.getCapacity());
             prs.executeUpdate();
 
             prs = conn.prepareStatement(
@@ -117,19 +94,19 @@ public class UserDaoImpl implements UserDao {
     }
 
     @Override
-    public void update(User user) {
+    public void update(Storage storage) {
         try {
             conn = DataSource.getConnection();
             prs = conn.prepareStatement(
                     String.format(
                             "UPDATE %s SET %s = ?, %s = ? WHERE %s = ?",
                             TABLE_NAME,
-                            COL_LOGIN, COL_PASSWORD,
+                            COL_USER_ID, COL_CAPACITY,
                             COL_ID
                     ));
-            prs.setString(1, user.getLogin());
-            prs.setString(2, user.getPassword());
-            prs.setLong(3, user.getId());
+
+            prs.setLong(1, storage.getUserId());
+            prs.setLong(2, storage.getCapacity());
             prs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -139,44 +116,18 @@ public class UserDaoImpl implements UserDao {
     }
 
     @Override
-    public void delete(User user) {
+    public void delete(Storage storage) {
         try {
             conn = DataSource.getConnection();
             prs = conn.prepareStatement(
                     String.format("DELETE FROM %s WHERE %s = ?", TABLE_NAME, COL_ID));
-            prs.setLong(1, user.getId());
+            prs.setLong(1, storage.getId());
             prs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
             disconnect();
         }
-    }
-
-    @Override
-    public Optional<User> findByLogin(String login) {
-        try {
-            conn = DataSource.getConnection();
-            prs = conn.prepareStatement(
-                    String.format("SELECT * FROM %s WHERE %s = ?", TABLE_NAME, COL_LOGIN));
-            prs.setString(1, login);
-            ResultSet resultSet = prs.executeQuery();
-            if (resultSet.next()) {
-                return Optional.of(
-                        new User(
-                                resultSet.getLong(COL_ID),
-                                resultSet.getString(COL_LOGIN),
-                                resultSet.getString(COL_PASSWORD)
-                        )
-                );
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            disconnect();
-        }
-
-        return Optional.empty();
     }
 
     private void disconnect() {
@@ -194,5 +145,34 @@ public class UserDaoImpl implements UserDao {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public Optional<Storage> findStorageByUser(User user) {
+        try {
+            conn = DataSource.getConnection();
+            prs = conn.prepareStatement(
+                    String.format("SELECT * FROM %s WHERE %s = ?", TABLE_NAME, COL_USER_ID));
+
+            prs.setLong(1, user.getId());
+
+            final ResultSet rs = prs.executeQuery();
+
+            if (rs.next()) {
+                return Optional.of(
+                        new Storage(
+                                rs.getLong(COL_ID),
+                                rs.getLong(COL_CAPACITY),
+                                rs.getLong(COL_USER_ID)
+                        )
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            disconnect();
+        }
+
+        return Optional.empty();
     }
 }

@@ -23,7 +23,7 @@
             <Insets bottom="10.0" />
         </VBox.margin>
     </Button>
-    <Button fx:id="buttonSignUp" prefHeight="39.0" prefWidth="250.0" text="Sign Up">
+    <Button fx:id="buttonSignUp" onAction="#sendSignUp" prefHeight="39.0" prefWidth="250.0" text="Sign Up">
         <VBox.margin>
             <Insets bottom="40.0" />
         </VBox.margin>

@@ -29,7 +29,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean addNewUser(User user) {
+    public long addNewUser(User user) {
         String rawPass = user.getPassword();
         user.setPassword(encoder.encode(rawPass));
         return dao.save(user);
