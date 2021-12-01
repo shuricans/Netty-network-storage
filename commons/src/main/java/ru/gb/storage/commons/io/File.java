@@ -1,8 +1,6 @@
-package ru.gb.storage.model;
+package ru.gb.storage.commons.io;
 
 import lombok.*;
-
-import java.nio.file.Path;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -12,7 +10,10 @@ import java.nio.file.Path;
 @EqualsAndHashCode
 public class File {
     private Long id;
-    private Path path;
+    private String name;
+    private String path;
+    private Long size;
+    private Boolean isDirectory;
     private Long parentId;
     private Long storageId;
 }
