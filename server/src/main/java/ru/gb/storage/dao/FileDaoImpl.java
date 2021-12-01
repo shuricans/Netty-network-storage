@@ -1,10 +1,10 @@
 package ru.gb.storage.dao;
 
-import ru.gb.storage.model.File;
+
+import ru.gb.storage.commons.io.File;
 import ru.gb.storage.model.Storage;
 import ru.gb.storage.service.DataSource;
 
-import java.nio.file.Paths;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +17,10 @@ public class FileDaoImpl implements FileDao {
     private static final String COL_PATH = "path";
     private static final String COL_PARENT_ID = "parent_id";
     private static final String COL_STORAGE_ID = "storage_id";
+    private static final String COL_SIZE = "size";
+    private static final String COL_NAME = "name";
+    private static final String COL_IS_DIR = "is_dir";
+
     private static final String NEW_INDEX = "currval";
 
     private Connection conn;
@@ -37,7 +41,10 @@ public class FileDaoImpl implements FileDao {
                 return Optional.of(
                         new File(
                                 rs.getLong(COL_ID),
-                                Paths.get(rs.getString(COL_PATH)),
+                                rs.getString(COL_NAME),
+                                rs.getString(COL_PATH),
+                                rs.getLong(COL_SIZE),
+                                rs.getBoolean(COL_IS_DIR),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -62,16 +69,15 @@ public class FileDaoImpl implements FileDao {
 
             final ResultSet rs = prs.executeQuery();
 
-            if (!rs.next()) {
-                return null;
-            }
-
             files = new ArrayList<>();
             while (rs.next()) {
                 files.add(
                         new File(
                                 rs.getLong(COL_ID),
-                                Paths.get(rs.getString(COL_PATH)),
+                                rs.getString(COL_NAME),
+                                rs.getString(COL_PATH),
+                                rs.getLong(COL_SIZE),
+                                rs.getBoolean(COL_IS_DIR),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -92,21 +98,27 @@ public class FileDaoImpl implements FileDao {
             prs = conn.prepareStatement(
                     String.format(
                             "INSERT INTO %s " +
-                                    "(%s, %s, %s) " +
-                                    "VALUES (?, ?, ?)",
+                                    "(%s, %s, %s, %s, %s, %s) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?)",
                             TABLE_NAME,
+                            COL_NAME,
                             COL_PATH,
+                            COL_SIZE,
+                            COL_IS_DIR,
                             COL_PARENT_ID,
                             COL_STORAGE_ID
                     ));
 
-            prs.setString(1, file.getPath().toString());
+            prs.setString(1, file.getName());
+            prs.setString(2, file.getPath());
+            prs.setLong(3, file.getSize());
+            prs.setBoolean(4, file.getIsDirectory());
             if (file.getParentId() == null) {
-                prs.setNull(2, Types.BIGINT);
+                prs.setNull(5, Types.BIGINT);
             } else {
-                prs.setLong(2, file.getParentId());
+                prs.setLong(5, file.getParentId());
             }
-            prs.setLong(3, file.getStorageId());
+            prs.setLong(6, file.getStorageId());
 
             prs.executeUpdate();
 
@@ -134,15 +146,27 @@ public class FileDaoImpl implements FileDao {
             conn = DataSource.getConnection();
             prs = conn.prepareStatement(
                     String.format(
-                            "UPDATE %s SET %s = ?, %s = ?, %s = ? WHERE %s = ?",
+                            "UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ? WHERE %s = ?",
                             TABLE_NAME,
-                            COL_PATH, COL_PARENT_ID, COL_STORAGE_ID,
+                            COL_NAME,
+                            COL_PATH,
+                            COL_SIZE,
+                            COL_IS_DIR,
+                            COL_PARENT_ID,
+                            COL_STORAGE_ID,
                             COL_ID
                     ));
 
-            prs.setString(1, file.getPath().toString());
-            prs.setLong(2, file.getParentId());
-            prs.setLong(3, file.getStorageId());
+            prs.setString(1, file.getName());
+            prs.setString(2, file.getPath());
+            prs.setLong(3, file.getSize());
+            prs.setBoolean(4, file.getIsDirectory());
+            if (file.getParentId() == null) {
+                prs.setNull(5, Types.BIGINT);
+            } else {
+                prs.setLong(5, file.getParentId());
+            }
+            prs.setLong(6, file.getStorageId());
             prs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -191,19 +215,18 @@ public class FileDaoImpl implements FileDao {
             prs = conn.prepareStatement(
                     String.format("SELECT * FROM %s WHERE %s = ?", TABLE_NAME, COL_PARENT_ID));
 
-            prs.setLong(1, parentFile.getParentId());
+            prs.setLong(1, parentFile.getId());
             final ResultSet rs = prs.executeQuery();
-
-            if (!rs.next()) {
-                return null;
-            }
 
             files = new ArrayList<>();
             while (rs.next()) {
                 files.add(
                         new File(
                                 rs.getLong(COL_ID),
-                                Paths.get(rs.getString(COL_PATH)),
+                                rs.getString(COL_NAME),
+                                rs.getString(COL_PATH),
+                                rs.getLong(COL_SIZE),
+                                rs.getBoolean(COL_IS_DIR),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -228,16 +251,15 @@ public class FileDaoImpl implements FileDao {
             prs.setLong(1, storage.getId());
             final ResultSet rs = prs.executeQuery();
 
-            if (!rs.next()) {
-                return null;
-            }
-
             files = new ArrayList<>();
             while (rs.next()) {
                 files.add(
                         new File(
                                 rs.getLong(COL_ID),
-                                Paths.get(rs.getString(COL_PATH)),
+                                rs.getString(COL_NAME),
+                                rs.getString(COL_PATH),
+                                rs.getLong(COL_SIZE),
+                                rs.getBoolean(COL_IS_DIR),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )

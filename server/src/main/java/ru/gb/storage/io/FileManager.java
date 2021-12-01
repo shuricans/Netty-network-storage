@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 public class FileManager {
 
     public static final Path ROOT;
+    public static final long DIRECTORY_SIZE = 4096;
 
     static {
         ROOT = initRootPackage();

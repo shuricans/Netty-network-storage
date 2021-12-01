@@ -1,8 +1,8 @@
 package ru.gb.storage.service;
 
 import lombok.AllArgsConstructor;
+import ru.gb.storage.commons.io.File;
 import ru.gb.storage.dao.FileDao;
-import ru.gb.storage.model.File;
 import ru.gb.storage.model.Storage;
 
 import java.util.List;

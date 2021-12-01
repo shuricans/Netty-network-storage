@@ -38,6 +38,9 @@ public class LoginController implements Initializable {
     private Client client;
     private BlockingQueue<Message> messagesQueue;
     private ScreenController screenController;
+    private ExplorerController explorerController;
+    private long storageId;
+    private long rootDirId;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -62,6 +65,10 @@ public class LoginController implements Initializable {
                     } else {
                         infoLabel.setText("Incorrect username or password.");
                     }
+                } else {
+                    final String[] data = message.getInfo().split(":");
+                    storageId = Integer.parseInt(data[0]);
+                    rootDirId = Integer.parseInt(data[1]);
                 }
             }
         });
@@ -70,6 +77,7 @@ public class LoginController implements Initializable {
             System.out.println("Success auth");
             infoLabel.setText("");
             screenController.activate("explorer");
+            explorerController.postInit(loginField.getText().trim(), storageId, rootDirId);
         });
 
         authService.start();

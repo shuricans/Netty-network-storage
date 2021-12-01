@@ -2,8 +2,6 @@ package ru.gb.storage.service;
 
 import lombok.AllArgsConstructor;
 import ru.gb.storage.dao.StorageDao;
-import ru.gb.storage.io.FileManager;
-import ru.gb.storage.model.File;
 import ru.gb.storage.model.Storage;
 import ru.gb.storage.model.User;
 

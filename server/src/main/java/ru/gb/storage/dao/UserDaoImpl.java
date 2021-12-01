@@ -61,9 +61,6 @@ public class UserDaoImpl implements UserDao {
 
             final ResultSet rs = prs.executeQuery();
 
-            if (!rs.next()) {
-                return null;
-            }
             users = new ArrayList<>();
             while (rs.next()) {
                 users.add(new User(

@@ -47,6 +47,13 @@ public class App extends Application {
         screenController.add("explorer", loader.load());
         explorerController = loader.getController();
 
+        loginController.setExplorerController(explorerController);
+
+        explorerController.setClient(client);
+        explorerController.setMessagesQueue(messagesQueue);
+        explorerController.setScreenController(screenController);
+        explorerController.setStage(stage);
+
         stage.setTitle("Netty-network-storage");
         stage.setScene(scene);
         stage.show();
