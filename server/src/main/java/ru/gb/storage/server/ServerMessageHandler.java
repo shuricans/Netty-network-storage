@@ -4,8 +4,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.AllArgsConstructor;
 import ru.gb.storage.commons.io.File;
-import ru.gb.storage.commons.message.*;
-import ru.gb.storage.io.FileManager;
+import ru.gb.storage.commons.message.FileRequestMessage;
+import ru.gb.storage.commons.message.ListFilesMessage;
+import ru.gb.storage.commons.message.Message;
+import ru.gb.storage.commons.message.SignMessage;
 import ru.gb.storage.model.Storage;
 import ru.gb.storage.model.User;
 import ru.gb.storage.service.AuthService;
@@ -13,11 +15,7 @@ import ru.gb.storage.service.FileService;
 import ru.gb.storage.service.StorageService;
 import ru.gb.storage.service.UserService;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -136,7 +134,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         rootDir.setName("rootPackage_" + newUserId);
         rootDir.setPath("");
         rootDir.setStorageId(newStorage.getId());
-        rootDir.setSize(FileManager.DIRECTORY_SIZE);
+        rootDir.setSize(0L);
         rootDir.setIsDirectory(true);
         rootDir.setParentId(null);
         final long rootDirId = fileService.addNewFile(rootDir);
