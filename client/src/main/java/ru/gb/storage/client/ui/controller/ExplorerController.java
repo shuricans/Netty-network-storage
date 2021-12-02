@@ -60,6 +60,14 @@ public class ExplorerController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        localTableView.getSelectionModel().setSelectionMode(
+                SelectionMode.MULTIPLE
+        );
+
+        remoteTableView.getSelectionModel().setSelectionMode(
+                SelectionMode.MULTIPLE
+        );
+
         localNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         localSizeTableColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
 
