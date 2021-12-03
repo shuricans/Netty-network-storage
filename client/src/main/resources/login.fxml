@@ -8,17 +8,17 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox fx:id="rootVBox" alignment="CENTER" fillWidth="false" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.gb.storage.client.ui.controller.LoginController" stylesheets="css/login.css">
-    <TextField fx:id="loginField" onAction="#sendAuth" prefWidth="250.0" promptText="login">
+    <TextField fx:id="loginField" onAction="#sendSignIn" prefWidth="250.0" promptText="login">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
     </TextField>
-    <PasswordField fx:id="passwordField" onAction="#sendAuth" prefWidth="250.0" promptText="password">
+    <PasswordField fx:id="passwordField" onAction="#sendSignIn" prefWidth="250.0" promptText="password">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>
     </PasswordField>
-    <Button fx:id="buttonSignIn" onAction="#sendAuth" prefHeight="39.0" prefWidth="250.0" text="Sign In">
+    <Button fx:id="buttonSignIn" onAction="#sendSignIn" prefHeight="39.0" prefWidth="250.0" text="Sign In">
         <VBox.margin>
             <Insets bottom="10.0" />
         </VBox.margin>

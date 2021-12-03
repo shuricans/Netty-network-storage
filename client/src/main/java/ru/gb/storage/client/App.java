@@ -10,20 +10,13 @@ import ru.gb.storage.client.netty.Client;
 import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.client.ui.controller.ScreenController;
-import ru.gb.storage.commons.message.Message;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class App extends Application {
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
-    private Client client;
-    private ScreenController screenController;
-    private LoginController loginController;
-    private ExplorerController explorerController;
-    private final LinkedBlockingQueue<Message> messagesQueue = new LinkedBlockingQueue<>();
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     public static void main(String[] args) {
         Application.launch(args);
@@ -34,39 +27,40 @@ public class App extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/login.fxml"));
         Object object = loader.load();
         Scene scene = new Scene((Parent) object, 800, 600);
-        loginController = loader.getController();
+        LoginController loginController = loader.getController();
 
-        screenController = new ScreenController(scene);
+        ScreenController screenController = new ScreenController(scene);
         screenController.add("login", (Pane) object);
-
-        loginController.setClient(client);
-        loginController.setMessagesQueue(messagesQueue);
         loginController.setScreenController(screenController);
 
         loader = new FXMLLoader(getClass().getResource("/explorer.fxml"));
         screenController.add("explorer", loader.load());
-        explorerController = loader.getController();
+        ExplorerController explorerController = loader.getController();
 
         loginController.setExplorerController(explorerController);
 
-        explorerController.setClient(client);
-        explorerController.setMessagesQueue(messagesQueue);
         explorerController.setScreenController(screenController);
         explorerController.setStage(stage);
-        explorerController.setExecutor(executorService);
+
+        Client client = new Client(
+                9000,
+                "localhost",
+                executorService,
+                loginController,
+                explorerController
+        );
+
+        executorService.execute(client);
 
         stage.setTitle("Netty-network-storage");
         stage.setScene(scene);
         stage.show();
-
-        loginController.auth();
     }
 
 
     @Override
     public void init() throws Exception {
-        client = new Client("localhost", 9000, messagesQueue);
-        executorService.execute(client);
+
     }
 
     @Override

@@ -28,6 +28,11 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public File getRootDir(Storage storage) {
+        return fileDao.findRootDirByStorage(storage).orElse(null);
+    }
+
+    @Override
     public long addNewFile(File file) {
         return fileDao.save(file);
     }

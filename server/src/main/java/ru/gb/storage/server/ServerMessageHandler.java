@@ -182,14 +182,13 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         if (authIsSuccess) {
             final User userFromDB = userService.getUserByLogin(user.getLogin());
             final Storage storage = storageService.getStorageByUser(userFromDB);
-            final File rootDir = fileService.getFilesByStorage(storage)
-                    .stream()
-                    .filter(file -> file.getParentId() == 0)
-                    .findFirst()
-                    .orElse(null);
+            final File rootDir = fileService.getRootDir(storage);
             if (rootDir != null) {
-                String info = storage.getId() + ":" + rootDir.getId();
-                message.setInfo(info);
+                message.setStorageId(storage.getId());
+                message.setRootDirId(rootDir.getId());
+            } else {
+                message.setSuccess(false);
+                message.setInfo("Fail on database layer...");
             }
         }
     }
@@ -229,9 +228,9 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         rootDir.setIsDirectory(true);
         rootDir.setParentId(null);
         final long rootDirId = fileService.addNewFile(rootDir);
-        message.setSuccess(newUserId > 0);
-        String info = newStorage.getId() + ":" + rootDirId;
-        message.setInfo(info);
+        message.setSuccess(true);
+        message.setStorageId(newStorage.getId());
+        message.setRootDirId(rootDirId);
     }
 
 }

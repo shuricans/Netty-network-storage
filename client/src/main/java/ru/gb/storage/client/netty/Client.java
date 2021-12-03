@@ -10,24 +10,24 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import lombok.RequiredArgsConstructor;
+import ru.gb.storage.client.ui.controller.ExplorerController;
+import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.commons.handler.JsonDecoder;
 import ru.gb.storage.commons.handler.JsonEncoder;
 import ru.gb.storage.commons.message.Message;
 
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ExecutorService;
 
+@RequiredArgsConstructor
 public final class Client implements Runnable {
 
     private final int port;
     private final String inetHost;
-    private final LinkedBlockingQueue<Message> messagesQueue;
+    private final ExecutorService executorService;
+    private final LoginController loginController;
+    private final ExplorerController explorerController;
     private SocketChannel channel;
-
-    public Client(String inetHost, int port, LinkedBlockingQueue<Message> messagesQueue) {
-        this.port = port;
-        this.inetHost = inetHost;
-        this.messagesQueue = messagesQueue;
-    }
 
     @Override
     public void run() {
@@ -42,17 +42,28 @@ public final class Client implements Runnable {
                         protected void initChannel(SocketChannel ch) {
                             channel = ch;
                             ch.pipeline().addLast(
-                                    new LengthFieldBasedFrameDecoder(1024 * 1024, 0, 3, 0, 3),
+                                    new LengthFieldBasedFrameDecoder(
+                                            1024 * 1024,
+                                            0,
+                                            3,
+                                            0,
+                                            3),
                                     new LengthFieldPrepender(3),
                                     new JsonDecoder(),
                                     new JsonEncoder(),
-                                    new ClientMessageHandler(messagesQueue)
+                                    new ClientMessageHandler(
+                                            executorService,
+                                            loginController,
+                                            explorerController
+                                    )
                             );
                         }
                     });
             // Start the client.
             Channel channel = bootstrap.connect(inetHost, port).sync().channel();
             System.out.println("Client started...");
+            loginController.setClient(this);
+            explorerController.setClient(this);
 
             // Wait until the connection is closed.
             channel.closeFuture().sync();
