@@ -14,18 +14,19 @@ import lombok.Setter;
 import ru.gb.storage.client.io.FileManager;
 import ru.gb.storage.client.netty.Client;
 import ru.gb.storage.commons.io.File;
-import ru.gb.storage.commons.message.FileRequestMessage;
-import ru.gb.storage.commons.message.FileRequestType;
-import ru.gb.storage.commons.message.ListFilesMessage;
-import ru.gb.storage.commons.message.Message;
+import ru.gb.storage.commons.message.*;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
 
 @Setter
 public class ExplorerController implements Initializable {
@@ -48,6 +49,9 @@ public class ExplorerController implements Initializable {
     @FXML
     private TableColumn<File, String> remoteSizeTableColumn;
 
+    @FXML
+    private Button buttonCopy;
+
     private Client client;
     private ObservableList<File> localFiles;
     private ObservableList<File> remoteFiles;
@@ -57,6 +61,9 @@ public class ExplorerController implements Initializable {
     private long storageId;
     private long rootDirId;
     private Stage stage;
+    private ExecutorService executor;
+
+    private static final int BUFFER_SIZE = 64 * 1024;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -118,10 +125,10 @@ public class ExplorerController implements Initializable {
         getLocalFiles(pathLocal);
     }
 
-    private void sendFileRequestMessage(long storageId, long parentId) {
+    private void sendFileRequestMessage(long storageId, long parentDirId) {
         final FileRequestMessage fileRequestMessage = new FileRequestMessage();
         fileRequestMessage.setType(FileRequestType.GET);
-        fileRequestMessage.setFileId(parentId);
+        fileRequestMessage.setParentDirId(parentDirId);
         fileRequestMessage.setStorageId(storageId);
         client.sendMessage(fileRequestMessage);
     }
@@ -143,9 +150,61 @@ public class ExplorerController implements Initializable {
                 final List<File> remoteFiles = message.getFiles();
                 updateRemoteFiles(remoteFiles);
             }
+            if (newValue instanceof FileRequestMessage) {
+                var message = (FileRequestMessage) newValue;
+                executor.execute(() -> {
+                    try (final RandomAccessFile raf = new RandomAccessFile(message.getFile().getPath(), "r")) {
+                        final long fileLength = raf.length();
+                        boolean isDone = false;
+                        do {
+                            final long filePointer = raf.getFilePointer();
+                            final long availableBytes = fileLength - filePointer;
+
+                            byte[] buffer;
+
+                            if (availableBytes >= BUFFER_SIZE) {
+                                buffer = new byte[BUFFER_SIZE];
+                            } else {
+                                buffer = new byte[(int) availableBytes];
+                                isDone = true;
+                            }
+
+                            raf.read(buffer);
+
+                            final FileTransferMessage fileTransferMessage = new FileTransferMessage();
+                            fileTransferMessage.setContent(buffer);
+                            fileTransferMessage.setStartPosition(filePointer);
+                            fileTransferMessage.setIsDone(isDone);
+                            fileTransferMessage.setPath(message.getPath());
+
+                            client.sendMessage(fileTransferMessage).sync();
+
+                        } while (raf.getFilePointer() < fileLength);
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
         });
 
         readerService.start();
+    }
+
+    public void copy() {
+        //localTableView.getSelectionModel().clearSelection();
+        final ObservableList<File> selectedFiles = localTableView.getSelectionModel().getSelectedItems();
+        final Optional<File> first = selectedFiles.stream().findFirst();
+
+        final File file = first.get();
+        if (file.getIsDirectory()) {
+            return;
+        }
+        final FileRequestMessage fileRequestMessage = new FileRequestMessage();
+        fileRequestMessage.setType(FileRequestType.UPLOAD);
+        fileRequestMessage.setFile(file);
+        fileRequestMessage.setStorageId(storageId);
+        fileRequestMessage.setParentDirId(rootDirId);
+        client.sendMessage(fileRequestMessage);
     }
 
     @AllArgsConstructor

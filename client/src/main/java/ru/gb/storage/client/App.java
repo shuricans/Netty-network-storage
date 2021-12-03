@@ -18,7 +18,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class App extends Application {
 
-    private ExecutorService executorService;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
     private Client client;
     private ScreenController screenController;
     private LoginController loginController;
@@ -53,6 +53,7 @@ public class App extends Application {
         explorerController.setMessagesQueue(messagesQueue);
         explorerController.setScreenController(screenController);
         explorerController.setStage(stage);
+        explorerController.setExecutor(executorService);
 
         stage.setTitle("Netty-network-storage");
         stage.setScene(scene);
@@ -65,7 +66,6 @@ public class App extends Application {
     @Override
     public void init() throws Exception {
         client = new Client("localhost", 9000, messagesQueue);
-        executorService = Executors.newSingleThreadExecutor();
         executorService.execute(client);
     }
 

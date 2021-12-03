@@ -69,7 +69,7 @@ public final class Server {
 
             // Start the server.
             ChannelFuture f = b.bind(PORT).sync();
-            System.out.printf("Server started on port: %s", PORT);
+            System.out.printf("Server started on port: %s%n", PORT);
 
             // Wait until the server socket is closed.
             f.channel().closeFuture().sync();

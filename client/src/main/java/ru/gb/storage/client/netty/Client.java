@@ -2,6 +2,7 @@ package ru.gb.storage.client.netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -62,7 +63,7 @@ public final class Client implements Runnable {
         }
     }
 
-    public void sendMessage(Message msg) {
-        channel.writeAndFlush(msg);
+    public ChannelFuture sendMessage(Message msg) {
+        return channel.writeAndFlush(msg);
     }
 }
