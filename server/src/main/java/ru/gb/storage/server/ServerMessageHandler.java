@@ -31,6 +31,8 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     private final StorageService storageService;
     private final FileService fileService;
 
+    private static final int BUFFER_SIZE = 64 * 1024;
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
 
@@ -133,7 +135,38 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     }
 
     private void downloadEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
+        executor.execute(() -> {
+            try (final RandomAccessFile raf = new RandomAccessFile(message.getFile().getPath(), "r")) {
+                final long fileLength = raf.length();
+                boolean isDone = false;
+                do {
+                    final long filePointer = raf.getFilePointer();
+                    final long availableBytes = fileLength - filePointer;
 
+                    byte[] buffer;
+
+                    if (availableBytes >= BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                    } else {
+                        buffer = new byte[(int) availableBytes];
+                        isDone = true;
+                    }
+
+                    raf.read(buffer);
+
+                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
+
+                    fileTransferMessage.setContent(buffer);
+                    fileTransferMessage.setStartPosition(filePointer);
+                    fileTransferMessage.setIsDone(isDone);
+                    fileTransferMessage.setPath(message.getPath());
+
+                    ctx.writeAndFlush(fileTransferMessage).sync();
+                } while (raf.getFilePointer() < fileLength);
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {

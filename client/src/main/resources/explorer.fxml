@@ -47,7 +47,7 @@
                   <VBox layoutX="154.0" layoutY="104.0" prefHeight="554.0" prefWidth="446.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <children>
                         <TextField fx:id="pathLocalTextField" onAction="#pathLocalTextFieldOnAction" />
-                        <TableView fx:id="localTableView" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                        <TableView fx:id="localTableView" onMouseReleased="#lastFocusLocalTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="localNameTableColumn" prefWidth="75.0" text="name" />
                             <TableColumn fx:id="localSizeTableColumn" prefWidth="75.0" text="size" />
@@ -65,7 +65,7 @@
                   <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <children>
                         <TextField fx:id="pathRemoteTextField" />
-                        <TableView fx:id="remoteTableView" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                        <TableView fx:id="remoteTableView" onMouseReleased="#lastFocusRemoteTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="remoteNameTableColumn" prefWidth="75.0" text="name" />
                             <TableColumn fx:id="remoteSizeTableColumn" prefWidth="75.0" text="size" />

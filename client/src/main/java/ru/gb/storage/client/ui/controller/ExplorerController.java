@@ -1,5 +1,6 @@
 package ru.gb.storage.client.ui.controller;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
@@ -23,10 +24,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @Setter
 public class ExplorerController implements Initializable {
@@ -56,12 +57,19 @@ public class ExplorerController implements Initializable {
     private ObservableList<File> localFiles;
     private ObservableList<File> remoteFiles;
     private BlockingQueue<Message> messagesQueue;
+    private final BlockingQueue<File> uploadQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<File> downloadQueue = new LinkedBlockingQueue<>();
     private FileManager fileManager;
     private ScreenController screenController;
     private long storageId;
     private long rootDirId;
+    private long currentRemoteDirId;
     private Stage stage;
     private ExecutorService executor;
+
+    private boolean isActiveLocalTableView = false;
+    private boolean isActiveRemoteTableView = false;
+
 
     private static final int BUFFER_SIZE = 64 * 1024;
 
@@ -125,7 +133,8 @@ public class ExplorerController implements Initializable {
         getLocalFiles(pathLocal);
     }
 
-    private void sendFileRequestMessage(long storageId, long parentDirId) {
+    private void getRemoteFiles(long storageId, long parentDirId) {
+        currentRemoteDirId = parentDirId;
         final FileRequestMessage fileRequestMessage = new FileRequestMessage();
         fileRequestMessage.setType(FileRequestType.GET);
         fileRequestMessage.setParentDirId(parentDirId);
@@ -138,49 +147,35 @@ public class ExplorerController implements Initializable {
         this.storageId = storageId;
         this.rootDirId = rootDirId;
         stage.setTitle("Netty-network-storage: " + login);
-        sendFileRequestMessage(storageId, rootDirId);
+        getRemoteFiles(storageId, rootDirId);
     }
 
     private void read() {
         final ReaderService readerService = new ReaderService(messagesQueue);
 
-        readerService.valueProperty().addListener((observableValue, oldValue, newValue) -> {
-            if (newValue instanceof ListFilesMessage) {
-                var message = (ListFilesMessage) newValue;
+        readerService.valueProperty().addListener((observableValue, prevMessage, newMessage) -> {
+            if (newMessage instanceof ListFilesMessage) {
+                var message = (ListFilesMessage) newMessage;
                 final List<File> remoteFiles = message.getFiles();
                 updateRemoteFiles(remoteFiles);
             }
-            if (newValue instanceof FileRequestMessage) {
-                var message = (FileRequestMessage) newValue;
-                executor.execute(() -> {
-                    try (final RandomAccessFile raf = new RandomAccessFile(message.getFile().getPath(), "r")) {
-                        final long fileLength = raf.length();
-                        boolean isDone = false;
-                        do {
-                            final long filePointer = raf.getFilePointer();
-                            final long availableBytes = fileLength - filePointer;
-
-                            byte[] buffer;
-
-                            if (availableBytes >= BUFFER_SIZE) {
-                                buffer = new byte[BUFFER_SIZE];
-                            } else {
-                                buffer = new byte[(int) availableBytes];
-                                isDone = true;
-                            }
-
-                            raf.read(buffer);
-
-                            final FileTransferMessage fileTransferMessage = new FileTransferMessage();
-                            fileTransferMessage.setContent(buffer);
-                            fileTransferMessage.setStartPosition(filePointer);
-                            fileTransferMessage.setIsDone(isDone);
-                            fileTransferMessage.setPath(message.getPath());
-
-                            client.sendMessage(fileTransferMessage).sync();
-
-                        } while (raf.getFilePointer() < fileLength);
-                    } catch (IOException | InterruptedException e) {
+            if (newMessage instanceof FileRequestMessage) {
+                var message = (FileRequestMessage) newMessage;
+                switch (message.getType()) {
+                    case UPLOAD:
+                        executor.execute(new FileUploader(client, message));
+                }
+            }
+            if (newMessage instanceof FileTransferMessage) {
+                var message = (FileTransferMessage) newMessage;
+                Platform.runLater(() -> {
+                    try(RandomAccessFile raf = new RandomAccessFile(message.getPath(), "rw")) {
+                        raf.seek(message.getStartPosition());
+                        raf.write(message.getContent());
+                        if (message.getIsDone()) {
+                            System.out.println("File transfer is finished");
+                        }
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 });
@@ -191,20 +186,43 @@ public class ExplorerController implements Initializable {
     }
 
     public void copy() {
-        //localTableView.getSelectionModel().clearSelection();
-        final ObservableList<File> selectedFiles = localTableView.getSelectionModel().getSelectedItems();
-        final Optional<File> first = selectedFiles.stream().findFirst();
-
-        final File file = first.get();
-        if (file.getIsDirectory()) {
+        if (isActiveLocalTableView) {
+            final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
+//            for (File localFile : selectedLocalFiles) {
+            final File localFile = selectedLocalFiles.stream().findFirst().get();
+            final FileRequestMessage fileRequestMessage = new FileRequestMessage();
+                fileRequestMessage.setType(FileRequestType.UPLOAD);
+                fileRequestMessage.setFile(localFile);
+                fileRequestMessage.setStorageId(storageId);
+                fileRequestMessage.setParentDirId(currentRemoteDirId);
+                client.sendMessage(fileRequestMessage);
+//            }
             return;
         }
-        final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-        fileRequestMessage.setType(FileRequestType.UPLOAD);
-        fileRequestMessage.setFile(file);
-        fileRequestMessage.setStorageId(storageId);
-        fileRequestMessage.setParentDirId(rootDirId);
-        client.sendMessage(fileRequestMessage);
+        if (isActiveRemoteTableView) {
+            final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
+            final File file = selectedRemoteFiles.stream().findFirst().get();
+
+            final FileRequestMessage fileRequestMessage = new FileRequestMessage();
+            fileRequestMessage.setType(FileRequestType.DOWNLOAD);
+            fileRequestMessage.setFile(file);
+            fileRequestMessage.setStorageId(storageId);
+            String path = Paths.get(pathLocalTextField.getText(), file.getName()).toString();
+            fileRequestMessage.setPath(path);
+            client.sendMessage(fileRequestMessage);
+        }
+    }
+
+    public void lastFocusLocalTable() {
+        isActiveLocalTableView = true;
+        isActiveRemoteTableView = false;
+        remoteTableView.getSelectionModel().clearSelection();
+    }
+
+    public void lastFocusRemoteTable() {
+        isActiveRemoteTableView = true;
+        isActiveLocalTableView = false;
+        localTableView.getSelectionModel().clearSelection();
     }
 
     @AllArgsConstructor
@@ -226,4 +244,44 @@ public class ExplorerController implements Initializable {
         }
     }
 
+    @AllArgsConstructor
+    private static class FileUploader implements Runnable {
+
+        private final Client client;
+        private final FileRequestMessage message;
+
+        @Override
+        public void run() {
+            try (final RandomAccessFile raf = new RandomAccessFile(message.getFile().getPath(), "r")) {
+                final long fileLength = raf.length();
+                boolean isDone = false;
+                do {
+                    final long filePointer = raf.getFilePointer();
+                    final long availableBytes = fileLength - filePointer;
+
+                    byte[] buffer;
+
+                    if (availableBytes >= BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                    } else {
+                        buffer = new byte[(int) availableBytes];
+                        isDone = true;
+                    }
+
+                    raf.read(buffer);
+
+                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
+
+                    fileTransferMessage.setContent(buffer);
+                    fileTransferMessage.setStartPosition(filePointer);
+                    fileTransferMessage.setIsDone(isDone);
+                    fileTransferMessage.setPath(message.getPath());
+
+                    client.sendMessage(fileTransferMessage).sync();
+                } while (raf.getFilePointer() < fileLength);
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
