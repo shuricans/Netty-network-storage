@@ -46,10 +46,9 @@ public class FileManager {
 
     private long getFileSize(Path path) {
         try {
-            if (Files.isDirectory(path)) {
-                return 0;
+            if (Files.isRegularFile(path)) {
+                return Files.size(path);
             }
-            return Files.size(path);
         } catch (IOException e) {
             e.printStackTrace();
         }

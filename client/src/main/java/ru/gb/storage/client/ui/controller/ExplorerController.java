@@ -14,6 +14,7 @@ import ru.gb.storage.commons.io.File;
 import ru.gb.storage.commons.message.FileRequestMessage;
 import ru.gb.storage.commons.message.FileRequestType;
 
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +87,7 @@ public class ExplorerController implements Initializable {
             row.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
                     File rowData = row.getItem();
-                    getLocalFiles(rowData.getPath());
+                    reloadLocalFiles(rowData.getPath());
                 }
             });
             return row;
@@ -96,9 +97,9 @@ public class ExplorerController implements Initializable {
         remoteTableView.setItems(remoteFiles);
     }
 
-    private void getLocalFiles(String path) {
+    private void reloadLocalFiles(String path) {
         Path p = Paths.get(path);
-        if (Files.isDirectory(p)) {
+        if (Files.exists(p) && Files.isDirectory(p)) {
             pathLocalTextField.setText(path);
             localFiles.clear();
             localFiles.addAll(fileManager.getLocalFiles(path));
@@ -114,7 +115,7 @@ public class ExplorerController implements Initializable {
 
     public void pathLocalTextFieldOnAction() {
         final String pathLocal = pathLocalTextField.getText();
-        getLocalFiles(pathLocal);
+        reloadLocalFiles(pathLocal);
     }
 
     public void getRemoteFiles(long storageId, long parentDirId) {
@@ -171,5 +172,17 @@ public class ExplorerController implements Initializable {
         isActiveRemoteTableView = true;
         isActiveLocalTableView = false;
         localTableView.getSelectionModel().clearSelection();
+    }
+
+    public void localBack() {
+        final String parentPath = getParentPath(pathLocalTextField.getText());
+        reloadLocalFiles(parentPath);
+    }
+
+    private String getParentPath(String path) {
+        try {
+            return Paths.get(path + "/..").toRealPath().toString();
+        } catch (IOException ignore) {}
+        return path;
     }
 }
