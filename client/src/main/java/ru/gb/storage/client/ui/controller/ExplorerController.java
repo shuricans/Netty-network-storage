@@ -297,6 +297,53 @@ public class ExplorerController implements Initializable {
         return FXAlert.showConfirmed(message.toString());
     }
 
+    private boolean showDeleteConfirm(List<File> files) {
+        StringBuilder message = new StringBuilder();
+        message.append("Do you want to move all to the bin?\n\n");
+        files.forEach(file -> {
+            message
+                    .append(" - ")
+                    .append(file.getName())
+                    .append(file.getIsDirectory() ? "/" : "")
+                    .append("\n");
+        });
+        return FXAlert.showConfirmed(message.toString());
+    }
+
+    public void deleteSelectedFiles() {
+        if (isActiveLocalTableView) {
+            final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
+            if (selectedLocalFiles.isEmpty()) {
+                return;
+            }
+
+            final boolean answerDelete = showDeleteConfirm(selectedLocalFiles);
+            if (!answerDelete) {
+                return;
+            }
+
+            try {
+                localFileManager.moveFilesToTheBin(selectedLocalFiles);
+            } catch (Exception e) {
+                FXAlert.showException(e, "Something went wrong...");
+            } finally {
+                refreshLocal();
+            }
+            return;
+        }
+        if (isActiveRemoteTableView) {
+            final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
+            if (selectedRemoteFiles.isEmpty()) {
+                return;
+            }
+
+            final boolean answerDelete = showDeleteConfirm(selectedRemoteFiles);
+            if (!answerDelete) {
+                return;
+            }
+        }
+    }
+
     @AllArgsConstructor
     @Getter
     @Setter

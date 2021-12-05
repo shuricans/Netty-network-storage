@@ -5,6 +5,7 @@ import javafx.collections.ObservableList;
 import ru.gb.storage.commons.io.File;
 
 
+import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,6 +54,12 @@ public class FileManager {
             Files.createDirectories(path);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void moveFilesToTheBin(List<File> selectedLocalFiles) {
+        for (File file : selectedLocalFiles) {
+            Desktop.getDesktop().moveToTrash(Path.of(file.getPath()).toFile());
         }
     }
 }

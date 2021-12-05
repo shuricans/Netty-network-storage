@@ -106,6 +106,14 @@
                <tooltip>
                   <Tooltip text="Copy selected files to opposite directory" />
                </tooltip></Button>
+            <Button mnemonicParsing="false" onAction="#deleteSelectedFiles" text="Delete">
+               <HBox.margin>
+                  <Insets left="2.0" />
+               </HBox.margin>
+               <tooltip>
+                  <Tooltip text="Move selected files to bin" />
+               </tooltip>
+            </Button>
          </children>
          <padding>
             <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
