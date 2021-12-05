@@ -38,6 +38,9 @@ public class LoginController implements Initializable {
     private Client client;
     private BlockingQueue<Message> messagesQueue;
     private ScreenController screenController;
+    private ExplorerController explorerController;
+    private long storageId;
+    private long rootDirId;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -57,7 +60,15 @@ public class LoginController implements Initializable {
                 var message = (SignMessage) newValue;
                 if (!message.isSuccess()) {
                     passwordField.clear();
-                    infoLabel.setText("Incorrect username or password.");
+                    if (message.getInfo() != null) {
+                        infoLabel.setText(message.getInfo());
+                    } else {
+                        infoLabel.setText("Incorrect username or password.");
+                    }
+                } else {
+                    final String[] data = message.getInfo().split(":");
+                    storageId = Integer.parseInt(data[0]);
+                    rootDirId = Integer.parseInt(data[1]);
                 }
             }
         });
@@ -66,12 +77,13 @@ public class LoginController implements Initializable {
             System.out.println("Success auth");
             infoLabel.setText("");
             screenController.activate("explorer");
+            explorerController.postInit(loginField.getText().trim(), storageId, rootDirId);
         });
 
         authService.start();
     }
 
-    public void sendAuth(ActionEvent actionEvent) {
+    public void sendAuth() {
         final String login = loginField.getText().trim();
         final String password = passwordField.getText();
 
@@ -86,6 +98,24 @@ public class LoginController implements Initializable {
         signInMessage.setLogin(login);
         signInMessage.setPassword(password);
         client.sendMessage(signInMessage);
+    }
+
+    public void sendSignUp() {
+        final String login = loginField.getText().trim();
+        final String password = passwordField.getText();
+
+        if (login.isEmpty() || password.isEmpty()) {
+            infoLabel.setText("Please type username and password.");
+            passwordField.clear();
+            return;
+        }
+
+        final SignMessage signUpMessage = new SignMessage();
+        signUpMessage.setType(Sign.UP);
+        signUpMessage.setLogin(login);
+        signUpMessage.setPassword(password);
+        client.sendMessage(signUpMessage);
+
     }
 
     @AllArgsConstructor

@@ -2,6 +2,7 @@ package ru.gb.storage.client.netty;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import javafx.application.Platform;
 import lombok.AllArgsConstructor;
 import ru.gb.storage.commons.message.Message;
 

@@ -10,4 +10,5 @@ public class SignMessage extends Message {
     private String password;
     private Sign type;
     private boolean success;
+    private String info;
 }
