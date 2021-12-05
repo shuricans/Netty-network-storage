@@ -10,7 +10,7 @@ import javafx.stage.Stage;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import ru.gb.storage.client.io.FileManager;
+import ru.gb.storage.client.io.LocalFileManager;
 import ru.gb.storage.client.netty.Client;
 import ru.gb.storage.client.ui.table.CustomNameCellCallback;
 import ru.gb.storage.client.ui.table.CustomSizeCellCallback;
@@ -56,7 +56,7 @@ public class ExplorerController implements Initializable {
     private Client client;
     private ObservableList<File> localFiles;
     private ObservableList<File> remoteFiles;
-    private FileManager localFileManager;
+    private LocalFileManager localFileManager;
     private ScreenController screenController;
     private long storageId;
     private long rootDirId;
@@ -82,7 +82,7 @@ public class ExplorerController implements Initializable {
         remoteNameTableColumn.setCellFactory(new CustomNameCellCallback());
         remoteSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
 
-        localFileManager = new FileManager();
+        localFileManager = new LocalFileManager();
         final String userHome = System.getProperty("user.home");
         localFiles = localFileManager.getLocalFiles(userHome);
         pathLocalTextField.setText(userHome);

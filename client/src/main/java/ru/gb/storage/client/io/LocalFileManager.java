@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class FileManager {
+public class LocalFileManager {
     public ObservableList<File> getLocalFiles(String path) {
         final ObservableList<File> files = FXCollections.observableArrayList();
 

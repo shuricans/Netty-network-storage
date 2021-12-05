@@ -5,7 +5,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import lombok.AllArgsConstructor;
-import ru.gb.storage.client.io.FileManager;
+import ru.gb.storage.client.io.LocalFileManager;
 import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.commons.io.File;
@@ -24,7 +24,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
     private final LoginController loginController;
     private final ExplorerController explorerController;
     private static final int BUFFER_SIZE = 64 * 1024;
-    private final FileManager fileManager = new FileManager();
+    private final LocalFileManager localFileManager = new LocalFileManager();
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -43,7 +43,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
 
         if (msg instanceof NestedFilesRequestMessage) {
             var message = (NestedFilesRequestMessage) msg;
-            fileManager.createDir(Paths.get(message.getPath()));
+            localFileManager.createDir(Paths.get(message.getPath()));
             final List<File> remoteNestedFiles = message.getFiles();
             for (File remoteFile : remoteNestedFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
@@ -75,7 +75,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     break;
                 case GET: // server want to get all children of this directory
                     final File directory = message.getFile();
-                    final ObservableList<File> localFiles = fileManager.getLocalFiles(directory.getPath());
+                    final ObservableList<File> localFiles = localFileManager.getLocalFiles(directory.getPath());
                     for (File localFile : localFiles) {
                         final FileRequestMessage fileRequestMessage = new FileRequestMessage();
                         fileRequestMessage.setType(FileRequestType.UPLOAD);
