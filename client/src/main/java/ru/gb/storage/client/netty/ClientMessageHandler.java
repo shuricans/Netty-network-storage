@@ -34,7 +34,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                 raf.seek(message.getStartPosition());
                 raf.write(message.getContent());
                 if (message.getIsDone()) {
-                    explorerController.refreshLocal();
+                    Platform.runLater(explorerController::refreshLocal);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
