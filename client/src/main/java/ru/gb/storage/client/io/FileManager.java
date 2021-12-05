@@ -21,7 +21,7 @@ public class FileManager {
             final List<File> fileList = paths
                     .map(pth -> new File(
                             null,
-                            getFileName(pth),
+                            pth.getFileName().toString(),
                             pth.toString(),
                             getFileSize(pth),
                             Files.isDirectory(pth),
@@ -37,13 +37,6 @@ public class FileManager {
         return files;
     }
 
-    private String getFileName(Path path) {
-        if (Files.isDirectory(path)) {
-            return path.getFileName().toString() + "/";
-        }
-        return path.getFileName().toString();
-    }
-
     private long getFileSize(Path path) {
         try {
             if (Files.isRegularFile(path)) {
@@ -53,5 +46,13 @@ public class FileManager {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    public void createDir(Path path) {
+        try {
+            Files.createDirectories(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

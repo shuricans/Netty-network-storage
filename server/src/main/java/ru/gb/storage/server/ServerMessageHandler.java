@@ -108,35 +108,65 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         ctx.writeAndFlush(listFilesMessage);
     }
 
+    // client wants upload his file or directory on server
     private void uploadEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
         final File fileFromClient = message.getFile();
-        final File futureFileOnServer = new File();
-        final String newFileName = UUID.randomUUID().toString();
-        final FileManager.Pathway pathway = FileManager.generatePath(newFileName);
-        futureFileOnServer.setName(fileFromClient.getName());
-        futureFileOnServer.setPath(pathway.getFullPath());
-        futureFileOnServer.setSize(fileFromClient.getSize());
-        futureFileOnServer.setIsDirectory(fileFromClient.getIsDirectory());
-        futureFileOnServer.setParentId(message.getParentDirId());
-        futureFileOnServer.setStorageId(message.getStorageId());
 
-        try {
-            Files.createDirectories(Paths.get(pathway.getDirectories()));
-        } catch (IOException e) {
-            e.printStackTrace();
+        // is directory?
+        if (fileFromClient.getIsDirectory()) {
+            // create virtual directory in db
+            final File virtualDir = new File();
+            virtualDir.setName(fileFromClient.getName());
+            virtualDir.setPath("");
+            virtualDir.setSize(0L);
+            virtualDir.setIsDirectory(true);
+            virtualDir.setParentId(message.getParentDirId());
+            virtualDir.setStorageId(message.getStorageId());
+
+            final long virtualDirId = fileService.addNewFile(virtualDir);
+            // now we have our virtual directory id
+            // and we send specific message to client
+            // give all files in this directory
+            message.setType(FileRequestType.GET);
+            message.getFile().setId(virtualDirId);
+        } else { // if regular file
+            final File futureFileOnServer = new File();
+            final String newFileName = UUID.randomUUID().toString();
+            final FileManager.Pathway pathway = FileManager.generatePath(newFileName);
+            futureFileOnServer.setName(fileFromClient.getName());
+            futureFileOnServer.setPath(pathway.getFullPath());
+            futureFileOnServer.setSize(fileFromClient.getSize());
+            futureFileOnServer.setIsDirectory(fileFromClient.getIsDirectory());
+            futureFileOnServer.setParentId(message.getParentDirId());
+            futureFileOnServer.setStorageId(message.getStorageId());
+
+            try {
+                Files.createDirectories(Paths.get(pathway.getDirectories()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            final long id = fileService.addNewFile(futureFileOnServer);
+
+            message.getFile().setId(id);
+            message.setPath(futureFileOnServer.getPath());
         }
-
-        final long id = fileService.addNewFile(futureFileOnServer);
-
-        message.getFile().setId(id);
-        message.setPath(futureFileOnServer.getPath());
-
         ctx.writeAndFlush(message);
     }
 
+    // client wants download this file from server
     private void downloadEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
+        final File file = message.getFile();
+        if (file.getIsDirectory()) {
+            final File dir = fileService.getFileById(file.getId());
+            final List<File> files = fileService.getFilesByDir(dir);
+            final NestedFilesRequestMessage nestedFilesRequestMessage =
+                    new NestedFilesRequestMessage(files, message.getPath());
+            ctx.writeAndFlush(nestedFilesRequestMessage);
+            return;
+        }
         executor.execute(() -> {
-            try (final RandomAccessFile raf = new RandomAccessFile(message.getFile().getPath(), "r")) {
+            try (final RandomAccessFile raf = new RandomAccessFile(file.getPath(), "r")) {
                 final long fileLength = raf.length();
                 boolean isDone = false;
                 do {

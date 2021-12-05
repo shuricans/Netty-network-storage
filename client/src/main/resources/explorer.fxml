@@ -15,7 +15,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:id="rootVBox" prefHeight="600.0" prefWidth="900.0" stylesheets="css/explorer.css" xmlns="http://javafx.com/javafx/" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.gb.storage.client.ui.controller.ExplorerController">
+<VBox fx:id="rootVBox" prefHeight="600.0" prefWidth="900.0" stylesheets="css/explorer.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.gb.storage.client.ui.controller.ExplorerController">
   <children>
     <MenuBar VBox.vgrow="NEVER">
       <menus>
@@ -77,12 +77,12 @@
                      <children>
                         <HBox VBox.vgrow="NEVER">
                            <children>
-                              <Button fx:id="buttonRemoteBack" mnemonicParsing="false" prefHeight="26.0" prefWidth="26.0" text="&lt;">
+                              <Button fx:id="buttonRemoteBack" mnemonicParsing="false" onAction="#remoteBack" prefHeight="26.0" prefWidth="26.0" text="&lt;">
                                  <tooltip>
                                     <Tooltip text="Back" />
                                  </tooltip>
                               </Button>
-                              <TextField fx:id="pathRemoteTextField" HBox.hgrow="ALWAYS" />
+                              <TextField fx:id="pathRemoteTextField" editable="false" HBox.hgrow="ALWAYS" />
                            </children>
                         </HBox>
                         <TableView fx:id="remoteTableView" onMouseReleased="#lastFocusRemoteTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
