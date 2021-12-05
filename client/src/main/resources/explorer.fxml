@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
@@ -10,14 +10,12 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.paint.Color?>
-<?import javafx.scene.text.Font?>
 
-<VBox fx:id="rootVBox" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.gb.storage.client.ui.controller.ExplorerController" stylesheets="css/explorer.css">
+<VBox fx:id="rootVBox" prefHeight="600.0" prefWidth="900.0" stylesheets="css/explorer.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.gb.storage.client.ui.controller.ExplorerController">
   <children>
     <MenuBar VBox.vgrow="NEVER">
       <menus>
@@ -50,8 +48,17 @@
                <children>
                   <VBox layoutX="154.0" layoutY="104.0" prefHeight="554.0" prefWidth="446.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <children>
-                        <TextField fx:id="pathLocalTextField" onAction="#pathLocalTextFieldOnAction" />
-                        <TableView fx:id="localTableView" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                        <HBox VBox.vgrow="NEVER">
+                           <children>
+                              <Button fx:id="buttonLocalBack" mnemonicParsing="false" onAction="#localBack" prefHeight="26.0" prefWidth="26.0" text="&lt;" HBox.hgrow="NEVER">
+                                 <tooltip>
+                                    <Tooltip text="Back" />
+                                 </tooltip>
+                              </Button>
+                              <TextField fx:id="pathLocalTextField" onAction="#pathLocalTextFieldOnAction" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+                        <TableView fx:id="localTableView" onMouseReleased="#lastFocusLocalTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="localNameTableColumn" prefWidth="75.0" text="name" />
                             <TableColumn fx:id="localSizeTableColumn" prefWidth="75.0" text="size" />
@@ -68,8 +75,17 @@
                <children>
                   <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <children>
-                        <TextField fx:id="pathRemoteTextField" />
-                        <TableView fx:id="remoteTableView" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
+                        <HBox VBox.vgrow="NEVER">
+                           <children>
+                              <Button fx:id="buttonRemoteBack" mnemonicParsing="false" onAction="#remoteBack" prefHeight="26.0" prefWidth="26.0" text="&lt;">
+                                 <tooltip>
+                                    <Tooltip text="Back" />
+                                 </tooltip>
+                              </Button>
+                              <TextField fx:id="pathRemoteTextField" editable="false" HBox.hgrow="ALWAYS" />
+                           </children>
+                        </HBox>
+                        <TableView fx:id="remoteTableView" onMouseReleased="#lastFocusRemoteTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
                           <columns>
                             <TableColumn fx:id="remoteNameTableColumn" prefWidth="75.0" text="name" />
                             <TableColumn fx:id="remoteSizeTableColumn" prefWidth="75.0" text="size" />
@@ -84,5 +100,16 @@
             </AnchorPane>
         </items>
       </SplitPane>
+      <HBox>
+         <children>
+            <Button fx:id="buttonCopy" onAction="#copy" text="Copy">
+               <tooltip>
+                  <Tooltip text="Copy selected files to opposite directory" />
+               </tooltip></Button>
+         </children>
+         <padding>
+            <Insets bottom="2.0" left="2.0" right="2.0" top="2.0" />
+         </padding>
+      </HBox>
   </children>
 </VBox>

@@ -9,6 +9,7 @@ public interface FileService {
     File getFileById(long id);
     List<File> getFilesByDir(File directory);
     List<File> getFilesByStorage(Storage storage);
+    File getRootDir(Storage storage);
     long addNewFile(File file);
     void update(File file);
 }

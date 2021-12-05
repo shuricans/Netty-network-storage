@@ -208,6 +208,42 @@ public class FileDaoImpl implements FileDao {
     }
 
     @Override
+    public Optional<File> findRootDirByStorage(Storage storage) {
+        try {
+            conn = DataSource.getConnection();
+            prs = conn.prepareStatement(
+                    String.format(
+                            "SELECT * FROM %s WHERE %s IS NULL AND %s = ?",
+                            TABLE_NAME, COL_PARENT_ID, COL_STORAGE_ID)
+            );
+
+            prs.setLong(1, storage.getId());
+
+            final ResultSet rs = prs.executeQuery();
+
+            if (rs.next()) {
+                return Optional.of(
+                        new File(
+                                rs.getLong(COL_ID),
+                                rs.getString(COL_NAME),
+                                rs.getString(COL_PATH),
+                                rs.getLong(COL_SIZE),
+                                rs.getBoolean(COL_IS_DIR),
+                                rs.getLong(COL_PARENT_ID),
+                                rs.getLong(COL_STORAGE_ID)
+                        )
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            disconnect();
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
     public List<File> getFilesByParent(File parentFile) {
         List<File> files = null;
         try {

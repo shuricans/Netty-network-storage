@@ -14,6 +14,7 @@ import ru.gb.storage.service.StorageService;
 import ru.gb.storage.service.UserService;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -30,8 +31,10 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     private final StorageService storageService;
     private final FileService fileService;
 
+    private static final int BUFFER_SIZE = 64 * 1024;
+
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, Message msg) throws Exception {
+    protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
 
         if (msg instanceof SignMessage) {
             var message = (SignMessage) msg;
@@ -55,33 +58,149 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             var message = (FileRequestMessage) msg;
             switch (message.getType()) {
                 case GET:
-                    final ListFilesMessage listFilesMessage = new ListFilesMessage();
-
-                    final File rootDir = fileService.getFileById(message.getFileId());
-                    final List<File> files = fileService
-                            .getFilesByDir(rootDir)
-                            .stream()
-                            .map(file -> new File(
-                                    file.getId(),
-                                    file.getName(),
-                                    file.getPath(),
-                                    file.getSize(),
-                                    file.getIsDirectory(),
-                                    file.getParentId(),
-                                    file.getStorageId()
-                            ))
-                            .collect(Collectors.toList());
-
-                    listFilesMessage.setFiles(files);
-                    ctx.writeAndFlush(listFilesMessage);
+                    getEventHandler(ctx, message);
                     break;
                 case UPLOAD:
+                    uploadEventHandler(ctx, message);
                     break;
                 case DOWNLOAD:
+                    downloadEventHandler(ctx, message);
                     break;
+                case DELETE:
+                    deleteEventHandler(ctx, message);
                 default:
             }
         }
+
+        if (msg instanceof FileTransferMessage) {
+            var message = (FileTransferMessage) msg;
+            try(RandomAccessFile raf = new RandomAccessFile(message.getPath(), "rw")) {
+                raf.seek(message.getStartPosition());
+                raf.write(message.getContent());
+                if (message.getIsDone()) {
+                    System.out.println("File transfer is finished");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void getEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
+        final ListFilesMessage listFilesMessage = new ListFilesMessage();
+
+        final File rootDir = fileService.getFileById(message.getParentDirId());
+        final List<File> files = fileService
+                .getFilesByDir(rootDir)
+                .stream()
+                .map(file -> new File(
+                        file.getId(),
+                        file.getName(),
+                        file.getPath(),
+                        file.getSize(),
+                        file.getIsDirectory(),
+                        file.getParentId(),
+                        file.getStorageId()
+                ))
+                .collect(Collectors.toList());
+
+        listFilesMessage.setFiles(files);
+        ctx.writeAndFlush(listFilesMessage);
+    }
+
+    // client wants upload his file or directory on server
+    private void uploadEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
+        final File fileFromClient = message.getFile();
+
+        // is directory?
+        if (fileFromClient.getIsDirectory()) {
+            // create virtual directory in db
+            final File virtualDir = new File();
+            virtualDir.setName(fileFromClient.getName());
+            virtualDir.setPath("");
+            virtualDir.setSize(0L);
+            virtualDir.setIsDirectory(true);
+            virtualDir.setParentId(message.getParentDirId());
+            virtualDir.setStorageId(message.getStorageId());
+
+            final long virtualDirId = fileService.addNewFile(virtualDir);
+            // now we have our virtual directory id
+            // and we send specific message to client
+            // give all files in this directory
+            message.setType(FileRequestType.GET);
+            message.getFile().setId(virtualDirId);
+        } else { // if regular file
+            final File futureFileOnServer = new File();
+            final String newFileName = UUID.randomUUID().toString();
+            final FileManager.Pathway pathway = FileManager.generatePath(newFileName);
+            futureFileOnServer.setName(fileFromClient.getName());
+            futureFileOnServer.setPath(pathway.getFullPath());
+            futureFileOnServer.setSize(fileFromClient.getSize());
+            futureFileOnServer.setIsDirectory(fileFromClient.getIsDirectory());
+            futureFileOnServer.setParentId(message.getParentDirId());
+            futureFileOnServer.setStorageId(message.getStorageId());
+
+            try {
+                Files.createDirectories(Paths.get(pathway.getDirectories()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            final long id = fileService.addNewFile(futureFileOnServer);
+
+            message.getFile().setId(id);
+            message.setPath(futureFileOnServer.getPath());
+        }
+        ctx.writeAndFlush(message);
+    }
+
+    // client wants download this file from server
+    private void downloadEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
+        final File file = message.getFile();
+        if (file.getIsDirectory()) {
+            final File dir = fileService.getFileById(file.getId());
+            final List<File> files = fileService.getFilesByDir(dir);
+            final NestedFilesRequestMessage nestedFilesRequestMessage =
+                    new NestedFilesRequestMessage(files, message.getPath());
+            ctx.writeAndFlush(nestedFilesRequestMessage);
+            return;
+        }
+        executor.execute(() -> {
+            try (final RandomAccessFile raf = new RandomAccessFile(file.getPath(), "r")) {
+                final long fileLength = raf.length();
+                boolean isDone = false;
+                do {
+                    final long filePointer = raf.getFilePointer();
+                    final long availableBytes = fileLength - filePointer;
+
+                    byte[] buffer;
+
+                    if (availableBytes >= BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                    } else {
+                        buffer = new byte[(int) availableBytes];
+                        isDone = true;
+                    }
+
+                    raf.read(buffer);
+
+                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
+
+                    fileTransferMessage.setContent(buffer);
+                    fileTransferMessage.setStartPosition(filePointer);
+                    fileTransferMessage.setIsDone(isDone);
+                    fileTransferMessage.setPath(message.getPath());
+
+                    ctx.writeAndFlush(fileTransferMessage).sync();
+                } while (raf.getFilePointer() < fileLength);
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
+
     }
 
     private void signIn(SignMessage message) {
@@ -93,14 +212,13 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         if (authIsSuccess) {
             final User userFromDB = userService.getUserByLogin(user.getLogin());
             final Storage storage = storageService.getStorageByUser(userFromDB);
-            final File rootDir = fileService.getFilesByStorage(storage)
-                    .stream()
-                    .filter(file -> file.getParentId() == 0)
-                    .findFirst()
-                    .orElse(null);
+            final File rootDir = fileService.getRootDir(storage);
             if (rootDir != null) {
-                String info = storage.getId() + ":" + rootDir.getId();
-                message.setInfo(info);
+                message.setStorageId(storage.getId());
+                message.setRootDirId(rootDir.getId());
+            } else {
+                message.setSuccess(false);
+                message.setInfo("Fail on database layer...");
             }
         }
     }
@@ -136,13 +254,13 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         rootDir.setName("rootPackage_" + newUserId);
         rootDir.setPath("");
         rootDir.setStorageId(newStorage.getId());
-        rootDir.setSize(FileManager.DIRECTORY_SIZE);
+        rootDir.setSize(0L);
         rootDir.setIsDirectory(true);
         rootDir.setParentId(null);
         final long rootDirId = fileService.addNewFile(rootDir);
-        message.setSuccess(newUserId > 0);
-        String info = newStorage.getId() + ":" + rootDirId;
-        message.setInfo(info);
+        message.setSuccess(true);
+        message.setStorageId(newStorage.getId());
+        message.setRootDirId(rootDirId);
     }
 
 }

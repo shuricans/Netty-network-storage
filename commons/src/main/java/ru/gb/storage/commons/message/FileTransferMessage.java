@@ -10,6 +10,6 @@ import lombok.Setter;
 public class FileTransferMessage extends Message {
     private byte[] content;
     private Long startPosition;
-    private Long fileId;
     private Boolean isDone;
+    private String path;
 }
