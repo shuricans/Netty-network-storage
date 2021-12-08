@@ -17,13 +17,14 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+import static ru.gb.storage.commons.Constant.BUFFER_SIZE;
+
 @AllArgsConstructor
 public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
 
     private final ExecutorService executorService;
     private final LoginController loginController;
     private final ExplorerController explorerController;
-    private static final int BUFFER_SIZE = 64 * 1024;
     private final LocalFileManager localFileManager = new LocalFileManager();
 
     @Override

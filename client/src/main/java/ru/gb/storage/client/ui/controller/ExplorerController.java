@@ -5,28 +5,34 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import ru.gb.storage.client.io.LocalFileManager;
-import ru.gb.storage.client.netty.Client;
+import ru.gb.storage.client.netty.ClientService;
 import ru.gb.storage.client.ui.table.CustomNameCellCallback;
 import ru.gb.storage.client.ui.table.CustomSizeCellCallback;
+import ru.gb.storage.client.utils.ConfigProperties;
 import ru.gb.storage.commons.io.File;
 import ru.gb.storage.commons.message.FileRequestMessage;
 import ru.gb.storage.commons.message.FileRequestType;
 
+import java.awt.*;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.ResourceBundle;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Setter
@@ -53,7 +59,7 @@ public class ExplorerController implements Initializable {
     @FXML
     private Button buttonCopy;
 
-    private Client client;
+    private ClientService clientService;
     private ObservableList<File> localFiles;
     private ObservableList<File> remoteFiles;
     private LocalFileManager localFileManager;
@@ -76,18 +82,17 @@ public class ExplorerController implements Initializable {
         remoteTableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         remoteTableView.setPlaceholder(new Label("This directory is empty..."));
 
+
         localNameTableColumn.setCellFactory(new CustomNameCellCallback());
         localSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
+        localNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+
 
         remoteNameTableColumn.setCellFactory(new CustomNameCellCallback());
         remoteSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
+        remoteNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
 
         localFileManager = new LocalFileManager();
-        final String userHome = System.getProperty("user.home");
-        localFiles = localFileManager.getLocalFiles(userHome);
-        pathLocalTextField.setText(userHome);
-
-        localTableView.setItems(localFiles);
 
         localTableView.setRowFactory(tv -> {
             TableRow<File> row = new TableRow<>();
@@ -154,15 +159,22 @@ public class ExplorerController implements Initializable {
         fileRequestMessage.setType(FileRequestType.GET);
         fileRequestMessage.setParentDirId(parentDirId);
         fileRequestMessage.setStorageId(storageId);
-        client.sendMessage(fileRequestMessage);
+        clientService.sendMessage(fileRequestMessage);
     }
 
     public void postInit(String login, long storageId, long rootDirId) {
         this.storageId = storageId;
         this.rootDirId = rootDirId;
-        stage.setTitle("Netty-network-storage: " + login);
+        final String prevTitle = stage.getTitle();
+        stage.setTitle(prevTitle + ": " + login);
         queueRemotePath.addFirst(new IdName(rootDirId, "/"));
         getRemoteFiles(storageId, rootDirId);
+
+        final String userHome = System.getProperty("user.home");
+        localFiles = localFileManager.getLocalFiles(userHome);
+        pathLocalTextField.setText(userHome);
+
+        localTableView.setItems(localFiles);
     }
 
     public void copy() {
@@ -192,7 +204,7 @@ public class ExplorerController implements Initializable {
                 fileRequestMessage.setFile(localFile);
                 fileRequestMessage.setStorageId(storageId);
                 fileRequestMessage.setParentDirId(currentRemoteDirId);
-                client.sendMessage(fileRequestMessage);
+                clientService.sendMessage(fileRequestMessage);
             }
             return;
         }
@@ -224,7 +236,7 @@ public class ExplorerController implements Initializable {
                 fileRequestMessage.setFile(remoteFile);
                 String path = Paths.get(currentLocalPath, remoteFile.getName()).toString();
                 fileRequestMessage.setPath(path);
-                client.sendMessage(fileRequestMessage);
+                clientService.sendMessage(fileRequestMessage);
             }
         }
     }
@@ -342,6 +354,39 @@ public class ExplorerController implements Initializable {
                 return;
             }
         }
+    }
+
+    public void open() {
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setInitialDirectory(Path.of(System.getProperty("user.home")).toFile());
+        final java.io.File directory = directoryChooser.showDialog(stage);
+        reloadLocalFiles(directory.getAbsolutePath());
+    }
+
+    public void logout() {
+        pathLocalTextField.clear();
+        pathRemoteTextField.clear();
+        queueRemotePath.clear();
+        localFiles.clear();
+        remoteFiles.clear();
+        final Optional<String> title = ConfigProperties.getPropertyValue("title");
+        title.ifPresent(stage::setTitle);
+        screenController.activate("login");
+    }
+
+    public void close() {
+        stage.close();
+    }
+
+    public void openGithub() {
+        final Optional<String> github = ConfigProperties.getPropertyValue("github");
+        github.ifPresent(url -> {
+            try {
+                Desktop.getDesktop().browse(new URL(url).toURI());
+            } catch (IOException | URISyntaxException e) {
+                FXAlert.showInfo(url);
+            }
+        });
     }
 
     @AllArgsConstructor

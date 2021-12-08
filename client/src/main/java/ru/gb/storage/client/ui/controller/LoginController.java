@@ -1,18 +1,18 @@
 package ru.gb.storage.client.ui.controller;
 
+import com.dustinredmond.fxalert.FXAlert;
 import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import lombok.Setter;
-import ru.gb.storage.client.netty.Client;
+import ru.gb.storage.client.netty.ClientService;
+import ru.gb.storage.client.utils.Utils;
 import ru.gb.storage.commons.message.Sign;
 import ru.gb.storage.commons.message.SignMessage;
 
 import java.net.URL;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 @Setter
@@ -28,10 +28,24 @@ public class LoginController implements Initializable {
     private Button buttonSignIn;
     @FXML
     private Button buttonSignUp;
+    @FXML
+    private Hyperlink hyperLinkReconnect;
+    @FXML
+    private Label labelInetHost;
+    @FXML
+    private Label labelPort;
+    @FXML
+    private ProgressBar progressBar;
+    @FXML
+    private Hyperlink hyperLinkHost;
+    @FXML
+    private Hyperlink hyperLinkPort;
 
-    private Client client;
+    private ClientService clientService;
     private ScreenController screenController;
     private ExplorerController explorerController;
+    private String inetHost;
+    private int port;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -39,13 +53,15 @@ public class LoginController implements Initializable {
             infoLabel.setText("");
         };
 
+        progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
         loginField.textProperty().addListener(changeFieldListener);
         passwordField.textProperty().addListener(changeFieldListener);
     }
 
     public void auth(SignMessage message) {
+        progressBar.setVisible(false);
+        passwordField.clear();
         if (!message.isSuccess()) {
-            passwordField.clear();
             if (message.getInfo() != null) {
                 infoLabel.setText(message.getInfo());
             } else {
@@ -53,6 +69,7 @@ public class LoginController implements Initializable {
             }
         } else {
             infoLabel.setText("");
+            loginField.setText("");
             screenController.activate("explorer");
             explorerController.postInit(
                     loginField.getText().trim(),
@@ -71,12 +88,13 @@ public class LoginController implements Initializable {
             passwordField.clear();
             return;
         }
+        progressBar.setVisible(true);
 
         final SignMessage signInMessage = new SignMessage();
         signInMessage.setType(Sign.IN);
         signInMessage.setLogin(login);
         signInMessage.setPassword(password);
-        client.sendMessage(signInMessage);
+        clientService.sendMessage(signInMessage);
     }
 
     public void sendSignUp() {
@@ -88,11 +106,72 @@ public class LoginController implements Initializable {
             passwordField.clear();
             return;
         }
+        progressBar.setVisible(true);
 
         final SignMessage signUpMessage = new SignMessage();
         signUpMessage.setType(Sign.UP);
         signUpMessage.setLogin(login);
         signUpMessage.setPassword(password);
-        client.sendMessage(signUpMessage);
+        clientService.sendMessage(signUpMessage);
+    }
+
+    public void connect() {
+        beforeConnect();
+        clientService.connect(inetHost, port);
+    }
+
+    public void connectionRequest(boolean success) {
+        afterConnect(success);
+    }
+
+    public void changeInetHost() {
+        Optional<String> newInetHostValue = FXAlert.input().withText("Enter a new host:").showAndWaitString();
+        newInetHostValue.ifPresent(newInetHost -> {
+            if (Utils.isValidIpAddress(newInetHost)) {
+                inetHost = newInetHost;
+                labelInetHost.setText(inetHost);
+            } else {
+                FXAlert.showError("This is [" + newInetHost + "] not valid host.");
+            }
+        });
+    }
+
+    public void changePort() {
+        Optional<String> newPortValue = FXAlert.input().withText("Enter an new port:").showAndWaitString();
+        newPortValue.ifPresent(newPort -> {
+            if (Utils.isValidPort(newPort)) {
+                port = Integer.parseInt(newPort);
+                labelPort.setText(newPort);
+            } else {
+                FXAlert.showError("This is [" + newPort + "] not valid port.");
+            }
+        });
+    }
+
+    private void beforeConnect() {
+        labelInetHost.setText(inetHost);
+        labelPort.setText(String.valueOf(port));
+        infoLabel.setText("");
+        hyperLinkHost.setDisable(true);
+        hyperLinkPort.setDisable(true);
+        hyperLinkReconnect.setVisible(false);
+        progressBar.setVisible(true);
+    }
+
+    private void afterConnect(boolean success) {
+        progressBar.setVisible(false);
+        if (success) {
+            infoLabel.setText("");
+            loginField.setDisable(false);
+            passwordField.setDisable(false);
+            buttonSignIn.setDisable(false);
+            buttonSignUp.setDisable(false);
+            hyperLinkReconnect.setVisible(false);
+        } else {
+            hyperLinkHost.setDisable(false);
+            hyperLinkPort.setDisable(false);
+            infoLabel.setText("Connection to server failed ...\nCheck host and port in bottom bar.");
+            hyperLinkReconnect.setVisible(true);
+        }
     }
 }

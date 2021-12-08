@@ -2,7 +2,6 @@ package ru.gb.storage.client.netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -22,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 @RequiredArgsConstructor
 public final class Client implements Runnable {
 
+    private final ClientService clientService;
     private final int port;
     private final String inetHost;
     private final ExecutorService executorService;
@@ -62,19 +62,19 @@ public final class Client implements Runnable {
             // Start the client.
             Channel channel = bootstrap.connect(inetHost, port).sync().channel();
             System.out.println("Client started...");
-            loginController.setClient(this);
-            explorerController.setClient(this);
+            clientService.connection(true);
 
             // Wait until the connection is closed.
             channel.closeFuture().sync();
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
+            clientService.connection(false);
             e.printStackTrace();
         } finally {
             workerGroup.shutdownGracefully();
         }
     }
 
-    public ChannelFuture sendMessage(Message msg) {
-        return channel.writeAndFlush(msg);
+    public void sendMessage(Message msg) {
+        channel.writeAndFlush(msg);
     }
 }
