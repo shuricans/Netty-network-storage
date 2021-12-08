@@ -36,7 +36,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Setter
-public class ExplorerController implements Initializable {
+public class ExplorerController implements Initializable, LostConnection {
 
     @FXML
     private TextField pathLocalTextField;
@@ -68,6 +68,7 @@ public class ExplorerController implements Initializable {
     private long rootDirId;
     private long currentRemoteDirId;
     private Stage stage;
+    private LoginController loginController;
 
     private boolean isActiveLocalTableView = false;
     private boolean isActiveRemoteTableView = false;
@@ -387,6 +388,12 @@ public class ExplorerController implements Initializable {
                 FXAlert.showInfo(url);
             }
         });
+    }
+
+    @Override
+    public void lostConnection() {
+        loginController.lostConnection();
+        logout();
     }
 
     @AllArgsConstructor

@@ -59,6 +59,7 @@ public class App extends Application {
         ScreenController screenController = new ScreenController(scene);
         screenController.add("login", (Pane) object);
         loginController.setScreenController(screenController);
+        screenController.setActive("login");
 
         loader = new FXMLLoader(getClass().getResource("/fxml/explorer.fxml"));
         screenController.add("explorer", loader.load());
@@ -67,6 +68,7 @@ public class App extends Application {
         loginController.setExplorerController(explorerController);
 
         explorerController.setScreenController(screenController);
+        explorerController.setLoginController(loginController);
         explorerController.setStage(stage);
 
 
@@ -78,7 +80,8 @@ public class App extends Application {
                 port,
                 executorService,
                 loginController,
-                explorerController
+                explorerController,
+                screenController
         );
 
         loginController.setClientService(clientService);
@@ -95,7 +98,7 @@ public class App extends Application {
 
     @Override
     public void init() {
-        final String nThreads = ConfigProperties.getPropertyValue("nThreads").orElse("2");
+        final String nThreads = ConfigProperties.getPropertyValue("nThreads").orElse("3");
         executorService = Executors.newFixedThreadPool(Integer.parseInt(nThreads));
         defaultInetHost = ConfigProperties.getPropertyValue("inetHost").orElse("localhost");
         defaultPort = Integer.parseInt(ConfigProperties.getPropertyValue("port").orElse("9000"));

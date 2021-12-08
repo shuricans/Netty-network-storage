@@ -36,6 +36,10 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
 
+        if (msg instanceof PingMessage) {
+            ctx.writeAndFlush(msg);
+        }
+
         if (msg instanceof SignMessage) {
             var message = (SignMessage) msg;
             switch (message.getType()) {

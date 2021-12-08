@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 
 @Setter
-public class LoginController implements Initializable {
+public class LoginController implements Initializable, LostConnection {
 
     @FXML
     private PasswordField passwordField;
@@ -173,5 +173,11 @@ public class LoginController implements Initializable {
             infoLabel.setText("Connection to server failed ...\nCheck host and port in bottom bar.");
             hyperLinkReconnect.setVisible(true);
         }
+    }
+
+    @Override
+    public void lostConnection() {
+        FXAlert.showError("lost connection...");
+        afterConnect(false);
     }
 }

@@ -52,6 +52,7 @@ public final class Client implements Runnable {
                                     new JsonDecoder(),
                                     new JsonEncoder(),
                                     new ClientMessageHandler(
+                                            clientService,
                                             executorService,
                                             loginController,
                                             explorerController
@@ -62,12 +63,12 @@ public final class Client implements Runnable {
             // Start the client.
             Channel channel = bootstrap.connect(inetHost, port).sync().channel();
             System.out.println("Client started...");
-            clientService.connection(true);
+            clientService.connectionResponseEvent(true);
 
             // Wait until the connection is closed.
             channel.closeFuture().sync();
         } catch (Exception e) {
-            clientService.connection(false);
+            clientService.connectionResponseEvent(false);
             e.printStackTrace();
         } finally {
             workerGroup.shutdownGracefully();

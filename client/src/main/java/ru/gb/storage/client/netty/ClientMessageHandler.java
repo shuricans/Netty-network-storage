@@ -22,6 +22,7 @@ import static ru.gb.storage.commons.Constant.BUFFER_SIZE;
 @AllArgsConstructor
 public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
 
+    private final ClientService clientService;
     private final ExecutorService executorService;
     private final LoginController loginController;
     private final ExplorerController explorerController;
@@ -40,6 +41,10 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+
+        if (msg instanceof PingMessage) {
+            clientService.pingResponseEvent();
         }
 
         if (msg instanceof NestedFilesRequestMessage) {
