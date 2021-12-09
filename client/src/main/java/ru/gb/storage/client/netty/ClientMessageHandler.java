@@ -53,6 +53,9 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                             downloadHBox.setProgressValue(message.getProgress() * .01d);
                         }
                         if (message.isDone()) {
+                            if (downloadHBox != null) {
+                                downloadHBox.setProgressValue(1d);
+                            }
                             explorerController.refreshLocal();
                             explorerController.showDownloadSpinner(false);
                         }
@@ -66,6 +69,12 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
         // upload
         if (msg instanceof FileTransferProgressMessage) {
             var message = (FileTransferProgressMessage) msg;
+            System.out.printf(
+                    "FTPM: id = %s progress = %d, isDone = %b%n",
+                    message.getFileId(),
+                    message.getProgress(),
+                    message.isDone()
+            );
             Platform.runLater(() -> {
                 DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
                 if (downloadHBox == null) {
@@ -77,6 +86,9 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     downloadHBox.setProgressValue(message.getProgress() * .01d);
                 }
                 if (message.isDone()) {
+                    if (downloadHBox != null) {
+                        downloadHBox.setProgressValue(1d);
+                    }
                     explorerController.refreshRemote();
                     explorerController.showDownloadSpinner(false);
                 }
@@ -113,6 +125,14 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
             var message = (FileRequestMessage) msg;
             switch (message.getType()) {
                 case UPLOAD: // server ready to accept this regular file
+                    Platform.runLater(() -> {
+                        final DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFile().getId());
+                        if (downloadHBox == null) {
+                            final DownloadHBox hBox = new DownloadHBox("download", message.getDestPath());
+                            hBox.init();
+                            downloadsController.addDownloadHBox(message.getFile().getId(), hBox);
+                        }
+                    });
                     executorService.execute(
                             new FileUploader(ctx, message)
                     );
@@ -160,7 +180,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     final FileTransferMessage fileTransferMessage = new FileTransferMessage();
                     int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
 
-                    if (availableBytes >= BUFFER_SIZE) {
+                    if (availableBytes > BUFFER_SIZE) {
                         buffer = new byte[BUFFER_SIZE];
                         if (currentProgress % 5 == 0 && currentProgress > progress) {
                             progress = currentProgress;
@@ -168,6 +188,10 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                         } else {
                             fileTransferMessage.setProgress(-1);
                         }
+                    } else if (availableBytes == BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                        isDone = true;
+                        fileTransferMessage.setProgress(100);
                     } else {
                         buffer = new byte[(int) availableBytes];
                         isDone = true;

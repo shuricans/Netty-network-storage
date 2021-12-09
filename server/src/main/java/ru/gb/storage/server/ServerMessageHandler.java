@@ -179,48 +179,6 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             return;
         }
         executor.execute(new FileUploader(ctx, message));
-//        executor.execute(() -> {
-//            try (final RandomAccessFile raf = new RandomAccessFile(file.getPath(), "r")) {
-//                final long fileLength = raf.length();
-//                boolean isDone = false;
-//                int progress = -1;
-//
-//                do {
-//                    final long filePointer = raf.getFilePointer();
-//                    final long availableBytes = fileLength - filePointer;
-//
-//                    byte[] buffer;
-//
-//                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
-//                    int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
-//
-//                    if (availableBytes >= BUFFER_SIZE) {
-//                        buffer = new byte[BUFFER_SIZE];
-//                        if (currentProgress % 5 == 0 && currentProgress > progress) {
-//                            progress = currentProgress;
-//                            fileTransferMessage.setProgress(progress);
-//                        } else {
-//                            fileTransferMessage.setProgress(-1);
-//                        }
-//                    } else {
-//                        buffer = new byte[(int) availableBytes];
-//                        isDone = true;
-//                    }
-//
-//                    raf.read(buffer);
-//
-//
-//                    fileTransferMessage.setContent(buffer);
-//                    fileTransferMessage.setStartPosition(filePointer);
-//                    fileTransferMessage.setDone(isDone);
-//                    fileTransferMessage.setDestPath(message.getRealPath());
-//
-//                    ctx.writeAndFlush(fileTransferMessage).sync();
-//                } while (raf.getFilePointer() < fileLength);
-//            } catch (IOException | InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        });
     }
 
     private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
@@ -308,7 +266,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                     final FileTransferMessage fileTransferMessage = new FileTransferMessage();
                     int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
 
-                    if (availableBytes >= BUFFER_SIZE) {
+                    if (availableBytes > BUFFER_SIZE) {
                         buffer = new byte[BUFFER_SIZE];
                         if (currentProgress % 5 == 0 && currentProgress > progress) {
                             progress = currentProgress;
@@ -316,6 +274,10 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                         } else {
                             fileTransferMessage.setProgress(-1);
                         }
+                    } else if (availableBytes == BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                        isDone = true;
+                        fileTransferMessage.setProgress(100);
                     } else {
                         buffer = new byte[(int) availableBytes];
                         isDone = true;
