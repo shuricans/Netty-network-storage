@@ -4,6 +4,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.paint.Color;
 import javafx.util.Callback;
+import ru.gb.storage.client.io.LocalFileManager;
 import ru.gb.storage.commons.io.File;
 
 
@@ -24,7 +25,7 @@ public class CustomNameCellCallback implements Callback<TableColumn<File, String
                             .getTableView().getItems()
                             .get(currentIndex).getName();
                     if (isDir) {
-                        setText(name + "/");
+                        setText(name + LocalFileManager.FS_SEPARATOR);
                         setTextFill(Color.PURPLE);
                     } else {
                         setText(name);

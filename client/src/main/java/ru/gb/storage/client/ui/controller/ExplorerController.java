@@ -120,7 +120,7 @@ public class ExplorerController implements Initializable, LostConnection {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
                     File remoteFile = row.getItem();
                     if (remoteFile.getIsDirectory()) {
-                        String s = currentRemoteDirId == rootDirId ? "" : "/";
+                        String s = currentRemoteDirId == rootDirId ? "" : LocalFileManager.FS_SEPARATOR;
                         queueRemotePath.addLast(
                                 new IdName(
                                         remoteFile.getId(),
@@ -178,7 +178,7 @@ public class ExplorerController implements Initializable, LostConnection {
         this.rootDirId = rootDirId;
         final String prevTitle = stage.getTitle();
         stage.setTitle(prevTitle + ": " + login);
-        queueRemotePath.addFirst(new IdName(rootDirId, "/"));
+        queueRemotePath.addFirst(new IdName(rootDirId, LocalFileManager.FS_SEPARATOR));
         getRemoteFiles(storageId, rootDirId);
 
         final String userHome = System.getProperty("user.home");
@@ -215,7 +215,11 @@ public class ExplorerController implements Initializable, LostConnection {
                 fileRequestMessage.setType(FileRequestMessage.Type.UPLOAD);
                 fileRequestMessage.setParentDirId(currentRemoteDirId);
                 fileRequestMessage.setStorageId(storageId);
-                fileRequestMessage.setDestPath(Path.of(pathRemoteTextField.getText(), localFile.getName()).toString());
+                if (LocalFileManager.FS_SEPARATOR.equals(pathRemoteTextField.getText())) {
+                    fileRequestMessage.setDestPath(LocalFileManager.FS_SEPARATOR + localFile.getName());
+                } else {
+                    fileRequestMessage.setDestPath(Path.of(pathRemoteTextField.getText(), localFile.getName()).toString());
+                }
                 clientService.sendMessage(fileRequestMessage);
             }
             return;
@@ -317,7 +321,7 @@ public class ExplorerController implements Initializable, LostConnection {
             message
                     .append(" - ")
                     .append(file.getName())
-                    .append(file.getIsDirectory() ? "/" : "")
+                    .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
                     .append("\n");
         });
         return FXAlert.showConfirmed(message.toString());
@@ -330,7 +334,7 @@ public class ExplorerController implements Initializable, LostConnection {
             message
                     .append(" - ")
                     .append(file.getName())
-                    .append(file.getIsDirectory() ? "/" : "")
+                    .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
                     .append("\n");
         });
         return FXAlert.showConfirmed(message.toString());

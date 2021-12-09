@@ -7,6 +7,7 @@ import ru.gb.storage.commons.io.File;
 
 import java.awt.*;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,6 +16,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class LocalFileManager {
+
+    public static String FS_SEPARATOR = FileSystems.getDefault().getSeparator();
+
     public ObservableList<File> getLocalFiles(String path) {
         final ObservableList<File> files = FXCollections.observableArrayList();
 
