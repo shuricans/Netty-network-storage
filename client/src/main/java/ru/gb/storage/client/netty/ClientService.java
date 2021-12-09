@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import ru.gb.storage.client.ui.controller.DownloadsController;
 import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.client.ui.controller.ScreenController;
@@ -23,6 +24,7 @@ public class ClientService {
     private final ExecutorService executorService;
     private final LoginController loginController;
     private final ExplorerController explorerController;
+    private final DownloadsController downloadsController;
     private final ScreenController screenController;
 
     private Client client;
@@ -40,7 +42,8 @@ public class ClientService {
                 inetHost,
                 executorService,
                 loginController,
-                explorerController
+                explorerController,
+                downloadsController
         );
         executorService.execute(client);
     }
@@ -52,7 +55,8 @@ public class ClientService {
                 inetHost,
                 executorService,
                 loginController,
-                explorerController
+                explorerController,
+                downloadsController
         );
         executorService.execute(client);
     }

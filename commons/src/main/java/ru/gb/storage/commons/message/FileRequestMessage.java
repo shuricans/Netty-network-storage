@@ -10,9 +10,11 @@ import ru.gb.storage.commons.io.File;
 @Getter
 public class FileRequestMessage extends Message {
     private File file;
-    private FileRequestType type;
-    private Long parentDirId;
-    private Long storageId;
-    private String path;
+    private Type type;
+    private long parentDirId;
+    private long storageId;
+    private String realPath;
+    private String destPath;
+    public enum Type {GET, DOWNLOAD, UPLOAD, DELETE}
 }
 

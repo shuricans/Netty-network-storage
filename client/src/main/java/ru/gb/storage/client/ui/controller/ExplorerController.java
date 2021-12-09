@@ -10,6 +10,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import lombok.AllArgsConstructor;
@@ -22,7 +23,6 @@ import ru.gb.storage.client.ui.table.CustomSizeCellCallback;
 import ru.gb.storage.client.utils.ConfigProperties;
 import ru.gb.storage.commons.io.File;
 import ru.gb.storage.commons.message.FileRequestMessage;
-import ru.gb.storage.commons.message.FileRequestType;
 
 import java.awt.*;
 import java.io.IOException;
@@ -55,6 +55,8 @@ public class ExplorerController implements Initializable, LostConnection {
     private TableColumn<File, String> remoteNameTableColumn;
     @FXML
     private TableColumn<File, String> remoteSizeTableColumn;
+    @FXML
+    private HBox downloadHBox;
 
     @FXML
     private Button buttonCopy;
@@ -73,7 +75,11 @@ public class ExplorerController implements Initializable, LostConnection {
     private boolean isActiveLocalTableView = false;
     private boolean isActiveRemoteTableView = false;
 
+    private boolean downloadSpinnerExist = false;
+
     private final LinkedList<IdName> queueRemotePath = new LinkedList<>();
+
+    private ProgressIndicator downloadSpinner;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -130,6 +136,10 @@ public class ExplorerController implements Initializable, LostConnection {
 
         remoteFiles = FXCollections.observableArrayList();
         remoteTableView.setItems(remoteFiles);
+
+        downloadSpinner = new ProgressIndicator();
+        downloadSpinner.setPrefWidth(23);
+        downloadSpinner.setPrefHeight(18);
     }
 
     private void reloadLocalFiles(String path) {
@@ -157,7 +167,7 @@ public class ExplorerController implements Initializable, LostConnection {
     public void getRemoteFiles(long storageId, long parentDirId) {
         currentRemoteDirId = parentDirId;
         final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-        fileRequestMessage.setType(FileRequestType.GET);
+        fileRequestMessage.setType(FileRequestMessage.Type.GET);
         fileRequestMessage.setParentDirId(parentDirId);
         fileRequestMessage.setStorageId(storageId);
         clientService.sendMessage(fileRequestMessage);
@@ -179,7 +189,7 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void copy() {
-        if (isActiveLocalTableView) {
+        if (isActiveLocalTableView) { // user wants upload this selected items to server
             final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
             if (selectedLocalFiles.isEmpty()) {
                 return;
@@ -201,15 +211,16 @@ public class ExplorerController implements Initializable, LostConnection {
 
             for (File localFile : selectedLocalFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-                fileRequestMessage.setType(FileRequestType.UPLOAD);
                 fileRequestMessage.setFile(localFile);
-                fileRequestMessage.setStorageId(storageId);
+                fileRequestMessage.setType(FileRequestMessage.Type.UPLOAD);
                 fileRequestMessage.setParentDirId(currentRemoteDirId);
+                fileRequestMessage.setStorageId(storageId);
+                fileRequestMessage.setDestPath(Path.of(pathRemoteTextField.getText(), localFile.getName()).toString());
                 clientService.sendMessage(fileRequestMessage);
             }
             return;
         }
-        if (isActiveRemoteTableView) {
+        if (isActiveRemoteTableView) { // user wants download this selected items from server
             final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
             if (selectedRemoteFiles.isEmpty()) {
                 return;
@@ -232,11 +243,13 @@ public class ExplorerController implements Initializable, LostConnection {
             final String currentLocalPath = pathLocalTextField.getText();
             for (File remoteFile : selectedRemoteFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-                fileRequestMessage.setType(FileRequestType.DOWNLOAD);
-                fileRequestMessage.setStorageId(storageId);
                 fileRequestMessage.setFile(remoteFile);
-                String path = Paths.get(currentLocalPath, remoteFile.getName()).toString();
-                fileRequestMessage.setPath(path);
+                fileRequestMessage.setType(FileRequestMessage.Type.DOWNLOAD);
+                fileRequestMessage.setParentDirId(currentRemoteDirId);
+                fileRequestMessage.setStorageId(storageId);
+                String destPath = Paths.get(currentLocalPath, remoteFile.getName()).toString();
+                fileRequestMessage.setDestPath(destPath);
+                fileRequestMessage.setRealPath(remoteFile.getPath());
                 clientService.sendMessage(fileRequestMessage);
             }
         }
@@ -394,6 +407,20 @@ public class ExplorerController implements Initializable, LostConnection {
     public void lostConnection() {
         loginController.lostConnection();
         logout();
+    }
+
+    public void showDownloadsDetails() {
+        screenController.activate("downloads");
+    }
+
+    public void showDownloadSpinner(boolean flag) {
+        if (flag && !downloadSpinnerExist) {
+            downloadSpinnerExist = true;
+            downloadHBox.getChildren().add(downloadSpinner);
+        } else if (downloadSpinnerExist) {
+            downloadSpinnerExist = false;
+            downloadHBox.getChildren().remove(downloadSpinner);
+        }
     }
 
     @AllArgsConstructor

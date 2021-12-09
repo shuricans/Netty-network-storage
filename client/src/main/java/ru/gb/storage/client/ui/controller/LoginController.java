@@ -68,14 +68,14 @@ public class LoginController implements Initializable, LostConnection {
                 infoLabel.setText("Incorrect username or password.");
             }
         } else {
-            infoLabel.setText("");
-            loginField.setText("");
             screenController.activate("explorer");
             explorerController.postInit(
                     loginField.getText().trim(),
                     message.getStorageId(),
                     message.getRootDirId()
             );
+            infoLabel.setText("");
+            loginField.setText("");
         }
     }
 
@@ -160,18 +160,20 @@ public class LoginController implements Initializable, LostConnection {
 
     private void afterConnect(boolean success) {
         progressBar.setVisible(false);
+
+        loginField.setDisable(!success);
+        passwordField.setDisable(!success);
+        buttonSignIn.setDisable(!success);
+        buttonSignUp.setDisable(!success);
+        hyperLinkReconnect.setVisible(!success);
         if (success) {
             infoLabel.setText("");
-            loginField.setDisable(false);
-            passwordField.setDisable(false);
-            buttonSignIn.setDisable(false);
-            buttonSignUp.setDisable(false);
-            hyperLinkReconnect.setVisible(false);
         } else {
+            loginField.clear();
+            passwordField.clear();
             hyperLinkHost.setDisable(false);
             hyperLinkPort.setDisable(false);
             infoLabel.setText("Connection to server failed ...\nCheck host and port in bottom bar.");
-            hyperLinkReconnect.setVisible(true);
         }
     }
 

@@ -10,6 +10,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import lombok.RequiredArgsConstructor;
+import ru.gb.storage.client.ui.controller.DownloadsController;
 import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.commons.handler.JsonDecoder;
@@ -27,6 +28,7 @@ public final class Client implements Runnable {
     private final ExecutorService executorService;
     private final LoginController loginController;
     private final ExplorerController explorerController;
+    private final DownloadsController downloadsController;
     private SocketChannel channel;
 
     @Override
@@ -55,7 +57,8 @@ public final class Client implements Runnable {
                                             clientService,
                                             executorService,
                                             loginController,
-                                            explorerController
+                                            explorerController,
+                                            downloadsController
                                     )
                             );
                         }

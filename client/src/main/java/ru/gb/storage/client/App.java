@@ -7,6 +7,7 @@ import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import ru.gb.storage.client.netty.ClientService;
+import ru.gb.storage.client.ui.controller.DownloadsController;
 import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.client.ui.controller.ScreenController;
@@ -71,6 +72,11 @@ public class App extends Application {
         explorerController.setLoginController(loginController);
         explorerController.setStage(stage);
 
+        loader = new FXMLLoader(getClass().getResource("/fxml/downloads.fxml"));
+        screenController.add("downloads", loader.load());
+        DownloadsController downloadsController = loader.getController();
+        downloadsController.setScreenController(screenController);
+        downloadsController.setExplorerController(explorerController);
 
         loginController.setInetHost(inetHost);
         loginController.setPort(port);
@@ -81,6 +87,7 @@ public class App extends Application {
                 executorService,
                 loginController,
                 explorerController,
+                downloadsController,
                 screenController
         );
 
