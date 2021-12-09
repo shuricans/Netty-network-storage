@@ -69,12 +69,6 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
         // upload
         if (msg instanceof FileTransferProgressMessage) {
             var message = (FileTransferProgressMessage) msg;
-            System.out.printf(
-                    "FTPM: id = %s progress = %d, isDone = %b%n",
-                    message.getFileId(),
-                    message.getProgress(),
-                    message.isDone()
-            );
             Platform.runLater(() -> {
                 DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
                 if (downloadHBox == null) {
@@ -128,7 +122,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     Platform.runLater(() -> {
                         final DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFile().getId());
                         if (downloadHBox == null) {
-                            final DownloadHBox hBox = new DownloadHBox("download", message.getDestPath());
+                            final DownloadHBox hBox = new DownloadHBox("upload", message.getDestPath());
                             hBox.init();
                             downloadsController.addDownloadHBox(message.getFile().getId(), hBox);
                         }

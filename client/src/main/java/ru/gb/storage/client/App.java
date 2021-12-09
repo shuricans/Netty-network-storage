@@ -78,6 +78,8 @@ public class App extends Application {
         downloadsController.setScreenController(screenController);
         downloadsController.setExplorerController(explorerController);
 
+        explorerController.setDownloadsController(downloadsController);
+
         loginController.setInetHost(inetHost);
         loginController.setPort(port);
 

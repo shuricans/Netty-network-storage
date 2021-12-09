@@ -11,6 +11,7 @@ import ru.gb.storage.client.ui.components.DownloadHBox;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 @Setter
@@ -43,6 +44,12 @@ public class DownloadsController implements Initializable, LostConnection {
                 .filter(downloadHBox -> Double.compare(1d, downloadHBox.getProgressValue()) == 0)
                 .forEach(rootVBox.getChildren()::remove);
         downloadHBoxMap.entrySet().removeIf(entry -> Double.compare(1d, entry.getValue().getProgressValue()) == 0);
+    }
+
+    public boolean isActiveDownloadsExist() {
+        return downloadHBoxMap.values()
+                .stream()
+                .anyMatch(downloadHBox -> Double.compare(1d, downloadHBox.getProgressValue()) != 0);
     }
 
     @Override

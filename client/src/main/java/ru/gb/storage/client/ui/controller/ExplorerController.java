@@ -71,6 +71,7 @@ public class ExplorerController implements Initializable, LostConnection {
     private long currentRemoteDirId;
     private Stage stage;
     private LoginController loginController;
+    private DownloadsController downloadsController;
 
     private boolean isActiveLocalTableView = false;
     private boolean isActiveRemoteTableView = false;
@@ -418,10 +419,11 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void showDownloadSpinner(boolean flag) {
-        if (flag && !downloadSpinnerExist) {
+        final boolean activeDownloadsExist = downloadsController.isActiveDownloadsExist();
+        if (!activeDownloadsExist && flag && !downloadSpinnerExist) {
             downloadSpinnerExist = true;
             downloadHBox.getChildren().add(downloadSpinner);
-        } else if (downloadSpinnerExist) {
+        } else if (downloadSpinnerExist && !activeDownloadsExist) {
             downloadSpinnerExist = false;
             downloadHBox.getChildren().remove(downloadSpinner);
         }
