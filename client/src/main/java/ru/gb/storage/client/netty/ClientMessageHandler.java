@@ -49,7 +49,11 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                             hBox.init();
                             hBox.setProgressValue(message.getProgress() * .01d);
                             downloadsController.addDownloadHBox(message.getFileId(), hBox);
+                            explorerController.refreshLocal();
                         } else {
+                            if (Double.compare(1d, downloadHBox.getProgressValue()) == 0) {
+                                explorerController.showDownloadSpinner(true);
+                            }
                             downloadHBox.setProgressValue(message.getProgress() * .01d);
                         }
                         if (message.isDone()) {
@@ -77,6 +81,9 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     hBox.setProgressValue(message.getProgress() * .01d);
                     downloadsController.addDownloadHBox(message.getFileId(), hBox);
                 } else {
+                    if (Double.compare(1d, downloadHBox.getProgressValue()) == 0) {
+                        explorerController.showDownloadSpinner(true);
+                    }
                     downloadHBox.setProgressValue(message.getProgress() * .01d);
                 }
                 if (message.isDone()) {

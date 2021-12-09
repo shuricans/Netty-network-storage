@@ -20,6 +20,7 @@ public class FileDaoImpl implements FileDao {
     private static final String COL_SIZE = "size";
     private static final String COL_NAME = "name";
     private static final String COL_IS_DIR = "is_dir";
+    private static final String COL_IS_READY = "is_ready";
 
     private static final String NEW_INDEX = "currval";
 
@@ -45,6 +46,7 @@ public class FileDaoImpl implements FileDao {
                                 rs.getString(COL_PATH),
                                 rs.getLong(COL_SIZE),
                                 rs.getBoolean(COL_IS_DIR),
+                                rs.getBoolean(COL_IS_READY),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -78,6 +80,7 @@ public class FileDaoImpl implements FileDao {
                                 rs.getString(COL_PATH),
                                 rs.getLong(COL_SIZE),
                                 rs.getBoolean(COL_IS_DIR),
+                                rs.getBoolean(COL_IS_READY),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -98,13 +101,14 @@ public class FileDaoImpl implements FileDao {
             prs = conn.prepareStatement(
                     String.format(
                             "INSERT INTO %s " +
-                                    "(%s, %s, %s, %s, %s, %s) " +
-                                    "VALUES (?, ?, ?, ?, ?, ?)",
+                                    "(%s, %s, %s, %s, %s, %s, %s) " +
+                                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
                             TABLE_NAME,
                             COL_NAME,
                             COL_PATH,
                             COL_SIZE,
                             COL_IS_DIR,
+                            COL_IS_READY,
                             COL_PARENT_ID,
                             COL_STORAGE_ID
                     ));
@@ -113,12 +117,13 @@ public class FileDaoImpl implements FileDao {
             prs.setString(2, file.getPath());
             prs.setLong(3, file.getSize());
             prs.setBoolean(4, file.getIsDirectory());
+            prs.setBoolean(5, file.getIsReady());
             if (file.getParentId() == null) {
-                prs.setNull(5, Types.BIGINT);
+                prs.setNull(6, Types.BIGINT);
             } else {
-                prs.setLong(5, file.getParentId());
+                prs.setLong(6, file.getParentId());
             }
-            prs.setLong(6, file.getStorageId());
+            prs.setLong(7, file.getStorageId());
 
             prs.executeUpdate();
 
@@ -146,12 +151,13 @@ public class FileDaoImpl implements FileDao {
             conn = DataSource.getConnection();
             prs = conn.prepareStatement(
                     String.format(
-                            "UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ? WHERE %s = ?",
+                            "UPDATE %s SET %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ?, %s = ? WHERE %s = ?",
                             TABLE_NAME,
                             COL_NAME,
                             COL_PATH,
                             COL_SIZE,
                             COL_IS_DIR,
+                            COL_IS_READY,
                             COL_PARENT_ID,
                             COL_STORAGE_ID,
                             COL_ID
@@ -161,12 +167,13 @@ public class FileDaoImpl implements FileDao {
             prs.setString(2, file.getPath());
             prs.setLong(3, file.getSize());
             prs.setBoolean(4, file.getIsDirectory());
+            prs.setBoolean(5, file.getIsReady());
             if (file.getParentId() == null) {
-                prs.setNull(5, Types.BIGINT);
+                prs.setNull(6, Types.BIGINT);
             } else {
-                prs.setLong(5, file.getParentId());
+                prs.setLong(6, file.getParentId());
             }
-            prs.setLong(6, file.getStorageId());
+            prs.setLong(7, file.getStorageId());
             prs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -229,6 +236,7 @@ public class FileDaoImpl implements FileDao {
                                 rs.getString(COL_PATH),
                                 rs.getLong(COL_SIZE),
                                 rs.getBoolean(COL_IS_DIR),
+                                rs.getBoolean(COL_IS_READY),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -263,6 +271,7 @@ public class FileDaoImpl implements FileDao {
                                 rs.getString(COL_PATH),
                                 rs.getLong(COL_SIZE),
                                 rs.getBoolean(COL_IS_DIR),
+                                rs.getBoolean(COL_IS_READY),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )
@@ -296,6 +305,7 @@ public class FileDaoImpl implements FileDao {
                                 rs.getString(COL_PATH),
                                 rs.getLong(COL_SIZE),
                                 rs.getBoolean(COL_IS_DIR),
+                                rs.getBoolean(COL_IS_READY),
                                 rs.getLong(COL_PARENT_ID),
                                 rs.getLong(COL_STORAGE_ID)
                         )

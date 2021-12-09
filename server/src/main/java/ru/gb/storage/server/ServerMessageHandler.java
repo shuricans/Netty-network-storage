@@ -17,7 +17,6 @@ import ru.gb.storage.service.UserService;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
@@ -112,6 +111,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                         file.getPath(),
                         file.getSize(),
                         file.getIsDirectory(),
+                        file.getIsReady(),
                         file.getParentId(),
                         file.getStorageId()
                 ))
@@ -133,6 +133,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             virtualDir.setPath("");
             virtualDir.setSize(0L);
             virtualDir.setIsDirectory(true);
+            virtualDir.setIsReady(true);
             virtualDir.setParentId(message.getParentDirId());
             virtualDir.setStorageId(message.getStorageId());
 
@@ -150,6 +151,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             futureFileOnServer.setPath(pathway.getFullPath());
             futureFileOnServer.setSize(fileFromClient.getSize());
             futureFileOnServer.setIsDirectory(fileFromClient.getIsDirectory());
+            futureFileOnServer.setIsReady(false);
             futureFileOnServer.setParentId(message.getParentDirId());
             futureFileOnServer.setStorageId(message.getStorageId());
 
@@ -238,6 +240,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         rootDir.setStorageId(newStorage.getId());
         rootDir.setSize(0L);
         rootDir.setIsDirectory(true);
+        rootDir.setIsReady(true);
         rootDir.setParentId(null);
         final long rootDirId = fileService.addNewFile(rootDir);
         message.setSuccess(true);

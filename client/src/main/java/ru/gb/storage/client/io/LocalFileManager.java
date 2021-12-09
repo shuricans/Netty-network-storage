@@ -30,6 +30,7 @@ public class LocalFileManager {
                             pth.toString(),
                             getFileSize(pth),
                             Files.isDirectory(pth),
+                            true, //TODO
                             null,
                             null
                     ))
