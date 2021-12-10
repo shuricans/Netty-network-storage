@@ -100,6 +100,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
         if (msg instanceof NestedFilesRequestMessage) {
             var message = (NestedFilesRequestMessage) msg;
             localFileManager.createDir(Paths.get(message.getPath()));
+            Platform.runLater(explorerController::refreshLocal);
             final List<File> remoteNestedFiles = message.getFiles();
             for (File remoteFile : remoteNestedFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
@@ -137,6 +138,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     );
                     break;
                 case GET: // server want to get all children of this directory
+                    Platform.runLater(explorerController::refreshRemote);
                     final File directory = message.getFile();
                     final ObservableList<File> localFiles = localFileManager.getLocalFiles(directory.getPath());
                     for (File localFile : localFiles) {
