@@ -11,4 +11,5 @@ public interface FileDao extends Dao<File> {
     Optional<File> findRootDirByStorage(Storage storage);
     List<File> getFilesByParent(File file);
     List<File> getFilesByStorage(Storage storage);
+    void setReadyByFileId(long fileId);
 }

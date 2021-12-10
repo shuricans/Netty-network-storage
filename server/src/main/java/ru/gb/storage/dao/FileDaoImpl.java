@@ -318,4 +318,26 @@ public class FileDaoImpl implements FileDao {
         }
         return files;
     }
+
+    @Override
+    public void setReadyByFileId(long fileId) {
+        try {
+            conn = DataSource.getConnection();
+            prs = conn.prepareStatement(
+                    String.format(
+                            "UPDATE %s SET %s = ? WHERE %s = ?",
+                            TABLE_NAME,
+                            COL_IS_READY,
+                            COL_ID
+                    ));
+
+            prs.setBoolean(1, Boolean.TRUE);
+            prs.setLong(2, fileId);
+            prs.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            disconnect();
+        }
+    }
 }

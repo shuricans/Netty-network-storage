@@ -92,6 +92,9 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                             )
                     );
                 }
+                if (message.isDone()) {
+                    fileService.setReadyByFileId(message.getFileId());
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }

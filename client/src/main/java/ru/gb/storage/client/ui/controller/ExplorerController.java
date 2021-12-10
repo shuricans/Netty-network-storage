@@ -273,7 +273,7 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void localBack() {
-        final String parentPath = getParentPath(pathLocalTextField.getText());
+        final String parentPath = localFileManager.getParentPath(pathLocalTextField.getText());
         reloadLocalFiles(parentPath);
     }
 
@@ -288,14 +288,6 @@ public class ExplorerController implements Initializable, LostConnection {
         StringBuilder sb = new StringBuilder();
         queueRemotePath.forEach(item -> sb.append(item.getName()));
         pathRemoteTextField.setText(sb.toString());
-    }
-
-    private String getParentPath(String path) {
-        try {
-            return Paths.get(path + "/..").toRealPath().toString();
-        } catch (IOException ignore) {
-        }
-        return path;
     }
 
     public void refreshLocal() {

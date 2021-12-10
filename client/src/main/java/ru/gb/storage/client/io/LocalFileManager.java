@@ -2,7 +2,6 @@ package ru.gb.storage.client.io;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import lombok.Getter;
 import ru.gb.storage.commons.io.File;
 
 import java.awt.*;
@@ -20,8 +19,7 @@ import java.util.stream.Stream;
 public class LocalFileManager {
 
     public static String FS_SEPARATOR = FileSystems.getDefault().getSeparator();
-    @Getter
-    private final Map<Path, List<File>> prevStateDir = new HashMap<>();
+    private final static Map<Path, List<File>> prevStateDir = new HashMap<>();
 
     public ObservableList<File> getLocalFiles(String path) {
         final ObservableList<File> files = FXCollections.observableArrayList();
@@ -90,5 +88,25 @@ public class LocalFileManager {
         for (File file : selectedLocalFiles) {
             Desktop.getDesktop().moveToTrash(Path.of(file.getPath()).toFile());
         }
+    }
+
+    public void markReady(String destPath) {
+        final String fileName = Path.of(destPath).getFileName().toString();
+        final String parentPath = getParentPath(destPath);
+        final List<File> files = prevStateDir.get(Path.of(parentPath));
+
+        if (files != null) {
+            files.stream().filter(f ->
+                    fileName.equals(f.getName())
+            ).findFirst().ifPresent(f -> f.setIsReady(true));
+        }
+    }
+
+    public String getParentPath(String path) {
+        try {
+            return Paths.get(path + "/..").toRealPath().toString();
+        } catch (IOException ignore) {
+        }
+        return path;
     }
 }
