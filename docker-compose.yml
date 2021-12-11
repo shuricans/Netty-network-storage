@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  db:
+    container_name: nns_db_postgres
+    image: shuricans/netty-network-storage-db-postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+      POSTGRES_DB: network_storage
+    ports:
+      - "5432:5432"
+
+  server:
+    container_name: nns_server
+    image: shuricans/netty-network-storage-server:latest
+    restart: unless-stopped
+    volumes:
+      - ./storage:/storage/root
+    ports:
+      - "8080:8080"

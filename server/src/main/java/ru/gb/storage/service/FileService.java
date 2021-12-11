@@ -12,4 +12,6 @@ public interface FileService {
     File getRootDir(Storage storage);
     long addNewFile(File file);
     void update(File file);
+    void setReadyByFileId(long fileId);
+    void delete(File file);
 }

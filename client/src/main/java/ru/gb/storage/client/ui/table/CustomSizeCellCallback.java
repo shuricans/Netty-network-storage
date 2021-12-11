@@ -23,6 +23,9 @@ public class CustomSizeCellCallback implements Callback<TableColumn<File, String
                     boolean isDir = param
                             .getTableView().getItems()
                             .get(currentIndex).getIsDirectory();
+                    boolean isReady = param
+                            .getTableView().getItems()
+                            .get(currentIndex).getIsReady();
                     long size = param
                             .getTableView().getItems()
                             .get(currentIndex).getSize();
@@ -30,6 +33,11 @@ public class CustomSizeCellCallback implements Callback<TableColumn<File, String
                         setText("");
                     } else {
                         setText(humanReadableByteCountSI(size));
+                        if (isReady) {
+                            setTextFill(Color.BLACK);
+                        } else {
+                            setTextFill(Color.RED);
+                        }
                     }
                 } else {
                     setText("");

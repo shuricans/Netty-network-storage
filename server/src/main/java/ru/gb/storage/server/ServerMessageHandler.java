@@ -19,6 +19,7 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -93,6 +94,9 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                             )
                     );
                 }
+                if (message.isDone()) {
+                    fileService.setReadyByFileId(message.getFileId());
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -112,6 +116,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                         file.getPath(),
                         file.getSize(),
                         file.getIsDirectory(),
+                        file.getIsReady(),
                         file.getParentId(),
                         file.getStorageId()
                 ))
@@ -133,6 +138,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             virtualDir.setPath("");
             virtualDir.setSize(0L);
             virtualDir.setIsDirectory(true);
+            virtualDir.setIsReady(true);
             virtualDir.setParentId(message.getParentDirId());
             virtualDir.setStorageId(message.getStorageId());
 
@@ -150,6 +156,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             futureFileOnServer.setPath(pathway.getFullPath());
             futureFileOnServer.setSize(fileFromClient.getSize());
             futureFileOnServer.setIsDirectory(fileFromClient.getIsDirectory());
+            futureFileOnServer.setIsReady(false);
             futureFileOnServer.setParentId(message.getParentDirId());
             futureFileOnServer.setStorageId(message.getStorageId());
 
@@ -179,52 +186,33 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             return;
         }
         executor.execute(new FileUploader(ctx, message));
-//        executor.execute(() -> {
-//            try (final RandomAccessFile raf = new RandomAccessFile(file.getPath(), "r")) {
-//                final long fileLength = raf.length();
-//                boolean isDone = false;
-//                int progress = -1;
-//
-//                do {
-//                    final long filePointer = raf.getFilePointer();
-//                    final long availableBytes = fileLength - filePointer;
-//
-//                    byte[] buffer;
-//
-//                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
-//                    int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
-//
-//                    if (availableBytes >= BUFFER_SIZE) {
-//                        buffer = new byte[BUFFER_SIZE];
-//                        if (currentProgress % 5 == 0 && currentProgress > progress) {
-//                            progress = currentProgress;
-//                            fileTransferMessage.setProgress(progress);
-//                        } else {
-//                            fileTransferMessage.setProgress(-1);
-//                        }
-//                    } else {
-//                        buffer = new byte[(int) availableBytes];
-//                        isDone = true;
-//                    }
-//
-//                    raf.read(buffer);
-//
-//
-//                    fileTransferMessage.setContent(buffer);
-//                    fileTransferMessage.setStartPosition(filePointer);
-//                    fileTransferMessage.setDone(isDone);
-//                    fileTransferMessage.setDestPath(message.getRealPath());
-//
-//                    ctx.writeAndFlush(fileTransferMessage).sync();
-//                } while (raf.getFilePointer() < fileLength);
-//            } catch (IOException | InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        });
     }
 
     private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
-
+        final File file = message.getFile();
+        try {
+            // real deleting...
+            if (file.getIsDirectory()) {
+                LinkedList<File> stack = new LinkedList<>();
+                stack.add(file);
+                while (!stack.isEmpty()) {
+                    File f = stack.pop();
+                    if (f.getIsDirectory()) {
+                        stack.addAll(fileService.getFilesByDir(f));
+                    } else {
+                        Files.delete(Path.of(f.getPath()));
+                    }
+                }
+            } else {
+                Files.delete(Path.of(file.getPath()));
+            }
+            // remove all records from db
+            fileService.delete(file);
+            ctx.writeAndFlush(new RefreshMessage(RefreshMessage.Type.REMOTE));
+        } catch (IOException e) {
+            e.printStackTrace();
+            ctx.writeAndFlush(new ExceptionMessage(e.getMessage()));
+        }
     }
 
     private void signIn(SignMessage message) {
@@ -280,6 +268,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         rootDir.setStorageId(newStorage.getId());
         rootDir.setSize(0L);
         rootDir.setIsDirectory(true);
+        rootDir.setIsReady(true);
         rootDir.setParentId(null);
         final long rootDirId = fileService.addNewFile(rootDir);
         message.setSuccess(true);
@@ -308,7 +297,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                     final FileTransferMessage fileTransferMessage = new FileTransferMessage();
                     int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
 
-                    if (availableBytes >= BUFFER_SIZE) {
+                    if (availableBytes > BUFFER_SIZE) {
                         buffer = new byte[BUFFER_SIZE];
                         if (currentProgress % 5 == 0 && currentProgress > progress) {
                             progress = currentProgress;
@@ -316,6 +305,10 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
                         } else {
                             fileTransferMessage.setProgress(-1);
                         }
+                    } else if (availableBytes == BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                        isDone = true;
+                        fileTransferMessage.setProgress(100);
                     } else {
                         buffer = new byte[(int) availableBytes];
                         isDone = true;

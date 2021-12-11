@@ -1,5 +1,6 @@
 package ru.gb.storage.client.netty;
 
+import com.dustinredmond.fxalert.FXAlert;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import javafx.application.Platform;
@@ -31,7 +32,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
     private final LoginController loginController;
     private final ExplorerController explorerController;
     private final DownloadsController downloadsController;
-    private final LocalFileManager localFileManager = new LocalFileManager();
+    private final LocalFileManager localFileManager;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -44,15 +45,18 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                 if (message.getProgress() >= 0) {
                     Platform.runLater(() -> {
                         DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
-                        if (downloadHBox == null) {
-                            final DownloadHBox hBox = new DownloadHBox("download", message.getDestPath());
-                            hBox.init();
-                            hBox.setProgressValue(message.getProgress() * .01d);
-                            downloadsController.addDownloadHBox(message.getFileId(), hBox);
+                        if (downloadHBox == null || downloadHBox.isDone()) {
+                            downloadHBox = new DownloadHBox("download", message.getDestPath());
+                            downloadsController.addDownloadHBox(message.getFileId(), downloadHBox);
+                            if (!message.isDone()) {
+                                explorerController.refreshLocal();
+                            }
                         } else {
                             downloadHBox.setProgressValue(message.getProgress() * .01d);
                         }
                         if (message.isDone()) {
+                            downloadHBox.setProgressValue(1d);
+                            downloadHBox.setDone(true);
                             explorerController.refreshLocal();
                             explorerController.showDownloadSpinner(false);
                         }
@@ -68,15 +72,12 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
             var message = (FileTransferProgressMessage) msg;
             Platform.runLater(() -> {
                 DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
-                if (downloadHBox == null) {
-                    final DownloadHBox hBox = new DownloadHBox("upload", message.getDestPath());
-                    hBox.init();
-                    hBox.setProgressValue(message.getProgress() * .01d);
-                    downloadsController.addDownloadHBox(message.getFileId(), hBox);
-                } else {
+                if (downloadHBox != null) {
                     downloadHBox.setProgressValue(message.getProgress() * .01d);
                 }
-                if (message.isDone()) {
+                if (message.isDone() && downloadHBox != null) {
+                    downloadHBox.setProgressValue(1d);
+                    downloadHBox.setDone(true);
                     explorerController.refreshRemote();
                     explorerController.showDownloadSpinner(false);
                 }
@@ -90,6 +91,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
         if (msg instanceof NestedFilesRequestMessage) {
             var message = (NestedFilesRequestMessage) msg;
             localFileManager.createDir(Paths.get(message.getPath()));
+            Platform.runLater(explorerController::refreshLocal);
             final List<File> remoteNestedFiles = message.getFiles();
             for (File remoteFile : remoteNestedFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
@@ -113,11 +115,21 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
             var message = (FileRequestMessage) msg;
             switch (message.getType()) {
                 case UPLOAD: // server ready to accept this regular file
+                    Platform.runLater(() -> {
+                        final DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFile().getId());
+                        if (downloadHBox == null || downloadHBox.isDone()) {
+                            final DownloadHBox hBox = new DownloadHBox("upload", message.getDestPath());
+                            downloadsController.addDownloadHBox(message.getFile().getId(), hBox);
+                            explorerController.showDownloadSpinner(true);
+                            explorerController.refreshRemote();
+                        }
+                    });
                     executorService.execute(
                             new FileUploader(ctx, message)
                     );
                     break;
                 case GET: // server want to get all children of this directory
+                    Platform.runLater(explorerController::refreshRemote);
                     final File directory = message.getFile();
                     final ObservableList<File> localFiles = localFileManager.getLocalFiles(directory.getPath());
                     for (File localFile : localFiles) {
@@ -131,6 +143,22 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                         ctx.writeAndFlush(fileRequestMessage);
                     }
             }
+        }
+
+        if (msg instanceof RefreshMessage) {
+            var message = (RefreshMessage) msg;
+            switch (message.getType()) {
+                case LOCAL:
+                    Platform.runLater(explorerController::refreshLocal);
+                    break;
+                case REMOTE:
+                    Platform.runLater(explorerController::refreshRemote);
+            }
+        }
+
+        if (msg instanceof ExceptionMessage) {
+            var message = (ExceptionMessage) msg;
+            Platform.runLater(() -> FXAlert.showError(message.getInfo()));
         }
 
         if (msg instanceof SignMessage) {
@@ -160,7 +188,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     final FileTransferMessage fileTransferMessage = new FileTransferMessage();
                     int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
 
-                    if (availableBytes >= BUFFER_SIZE) {
+                    if (availableBytes > BUFFER_SIZE) {
                         buffer = new byte[BUFFER_SIZE];
                         if (currentProgress % 5 == 0 && currentProgress > progress) {
                             progress = currentProgress;
@@ -168,6 +196,10 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                         } else {
                             fileTransferMessage.setProgress(-1);
                         }
+                    } else if (availableBytes == BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                        isDone = true;
+                        fileTransferMessage.setProgress(100);
                     } else {
                         buffer = new byte[(int) availableBytes];
                         isDone = true;

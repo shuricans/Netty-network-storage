@@ -15,6 +15,7 @@ public class File {
     private String path;
     private Long size;
     private Boolean isDirectory;
+    private Boolean isReady;
     private Long parentId;
     private Long storageId;
 

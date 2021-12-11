@@ -21,6 +21,9 @@ public class CustomNameCellCallback implements Callback<TableColumn<File, String
                     boolean isDir = param
                             .getTableView().getItems()
                             .get(currentIndex).getIsDirectory();
+                    boolean isReady = param
+                            .getTableView().getItems()
+                            .get(currentIndex).getIsReady();
                     String name = param
                             .getTableView().getItems()
                             .get(currentIndex).getName();
@@ -29,7 +32,11 @@ public class CustomNameCellCallback implements Callback<TableColumn<File, String
                         setTextFill(Color.PURPLE);
                     } else {
                         setText(name);
-                        setTextFill(Color.BLACK);
+                        if (isReady) {
+                            setTextFill(Color.BLACK);
+                        } else {
+                            setTextFill(Color.RED);
+                        }
                     }
                 } else {
                     setText("");

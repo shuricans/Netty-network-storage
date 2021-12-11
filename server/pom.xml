@@ -20,6 +20,8 @@
         <HikariCP.version>5.0.0</HikariCP.version>
         <postgresql.version>42.2.23</postgresql.version>
         <netty.version>4.1.70.Final</netty.version>
+        <app.image.name>netty-network-storage-server</app.image.name>
+        <app.image.tag/>
     </properties>
 
     <dependencies>
@@ -67,13 +69,6 @@
             <artifactId>commons</artifactId>
             <version>DEV-SNAPSHOT</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.15</version>
-        </dependency>
-
     </dependencies>
 
     <build>
@@ -93,7 +88,156 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>8.2.1</version>
+                <configuration>
+                    <user>postgres</user>
+                    <password>123</password>
+                    <url>jdbc:postgresql://10.0.0.82:5432/network_storage</url>
+                    <driver>org.postgresql.Driver</driver>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>${postgresql.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.1.4</version>
+                <configuration>
+                    <from>
+                        <image>openjdk:11</image>
+                    </from>
+                    <container>
+                        <ports>
+                            <port>8080</port>
+                        </ports>
+                        <format>OCI</format>
+                        <volumes>
+                            <volume>/storage/root</volume>
+                        </volumes>
+                    </container>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>jib-push-to-dockerhub</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.1.4</version>
+                        <configuration>
+                            <from>
+                                <image>openjdk:11</image>
+                            </from>
+                            <container>
+                                <ports>
+                                    <port>8080</port>
+                                </ports>
+                                <format>OCI</format>
+                                <volumes>
+                                    <volume>/storage/root</volume>
+                                </volumes>
+                            </container>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>push-custom-tag</id>
+                                <phase>package</phase>
+                                <configuration>
+                                    <to>
+                                        <image>docker.io/shuricans/${app.image.name}:${app.image.tag}</image>
+                                    </to>
+                                </configuration>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>push-latest-tag</id>
+                                <phase>package</phase>
+                                <configuration>
+                                    <to>
+                                        <image>docker.io/shuricans/${app.image.name}:latest</image>
+                                    </to>
+                                </configuration>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>jib-push-to-local</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>3.1.4</version>
+                        <configuration>
+                            <from>
+                                <image>openjdk:11</image>
+                            </from>
+                            <container>
+                                <ports>
+                                    <port>8080</port>
+                                </ports>
+                                <format>OCI</format>
+                                <volumes>
+                                    <volume>/storage/root</volume>
+                                </volumes>
+                            </container>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>push-custom-tag</id>
+                                <phase>package</phase>
+                                <configuration>
+                                    <to>
+                                        <image>shuricans/${app.image.name}:${app.image.tag}</image>
+                                    </to>
+                                </configuration>
+                                <goals>
+                                    <goal>dockerBuild</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>push-latest-tag</id>
+                                <phase>package</phase>
+                                <configuration>
+                                    <to>
+                                        <image>shuricans/${app.image.name}:latest</image>
+                                    </to>
+                                </configuration>
+                                <goals>
+                                    <goal>dockerBuild</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

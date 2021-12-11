@@ -5,7 +5,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.*;
@@ -58,9 +57,6 @@ public class ExplorerController implements Initializable, LostConnection {
     @FXML
     private HBox downloadHBox;
 
-    @FXML
-    private Button buttonCopy;
-
     private ClientService clientService;
     private ObservableList<File> localFiles;
     private ObservableList<File> remoteFiles;
@@ -71,6 +67,7 @@ public class ExplorerController implements Initializable, LostConnection {
     private long currentRemoteDirId;
     private Stage stage;
     private LoginController loginController;
+    private DownloadsController downloadsController;
 
     private boolean isActiveLocalTableView = false;
     private boolean isActiveRemoteTableView = false;
@@ -99,7 +96,7 @@ public class ExplorerController implements Initializable, LostConnection {
         remoteSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
         remoteNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
 
-        localFileManager = new LocalFileManager();
+
 
         localTableView.setRowFactory(tv -> {
             TableRow<File> row = new TableRow<>();
@@ -174,6 +171,7 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void postInit(String login, long storageId, long rootDirId) {
+        localFileManager = new LocalFileManager(downloadsController);
         this.storageId = storageId;
         this.rootDirId = rootDirId;
         final String prevTitle = stage.getTitle();
@@ -192,18 +190,28 @@ public class ExplorerController implements Initializable, LostConnection {
         if (isActiveLocalTableView) { // user wants upload this selected items to server
             final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
             if (selectedLocalFiles.isEmpty()) {
+                FXAlert.showInfo("Please, choose files to copy.");
                 return;
+            } else {
+                // remove all currently downloading files
+                selectedLocalFiles.removeIf(file -> !file.getIsReady());
+                if (selectedLocalFiles.isEmpty()) {
+                    FXAlert.showInfo("Incompletely downloaded files cannot be copied.");
+                    return;
+                }
             }
 
             final Set<File> collisions = getCollisionsBeforeCopy(remoteFiles, selectedLocalFiles);
 
-            // if we have collisions, do nothing for now
             if (!collisions.isEmpty()) {
                 final boolean answerRewrite = showCollisionsConfirm(collisions);
                 if (answerRewrite) {
-                    //TODO move this files to bin on server
-                    FXAlert.showError("This feature currently not available.");
-                    return;
+                    collisions.forEach(remoteFile -> {
+                        final FileRequestMessage fileRequestMessage = new FileRequestMessage();
+                        fileRequestMessage.setFile(remoteFile);
+                        fileRequestMessage.setType(FileRequestMessage.Type.DELETE);
+                        clientService.sendMessage(fileRequestMessage);
+                    });
                 } else {
                     return;
                 }
@@ -227,7 +235,14 @@ public class ExplorerController implements Initializable, LostConnection {
         if (isActiveRemoteTableView) { // user wants download this selected items from server
             final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
             if (selectedRemoteFiles.isEmpty()) {
+                FXAlert.showInfo("Please, choose files to copy.");
                 return;
+            } else {
+                selectedRemoteFiles.removeIf(file -> !file.getIsReady());
+                if (selectedRemoteFiles.isEmpty()) {
+                    FXAlert.showInfo("Incompletely uploaded files cannot be copied.");
+                    return;
+                }
             }
 
             final Set<File> collisions = getCollisionsBeforeCopy(localFiles, selectedRemoteFiles);
@@ -236,9 +251,7 @@ public class ExplorerController implements Initializable, LostConnection {
             if (!collisions.isEmpty()) {
                 final boolean answerRewrite = showCollisionsConfirm(collisions);
                 if (answerRewrite) {
-                    //TODO move this files to bin on client
-                    FXAlert.showError("This feature currently not available.");
-                    return;
+                    localFileManager.moveFilesToTheBin(List.copyOf(collisions));
                 } else {
                     return;
                 }
@@ -272,14 +285,16 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void localBack() {
-        final String parentPath = getParentPath(pathLocalTextField.getText());
+        final String parentPath = localFileManager.getParentPath(pathLocalTextField.getText());
         reloadLocalFiles(parentPath);
     }
 
     public void remoteBack() {
         if (queueRemotePath.size() > 1) {
             queueRemotePath.pollLast();
-            getRemoteFiles(storageId, queueRemotePath.peekLast().getId());
+            if (queueRemotePath.peekLast() != null) {
+                getRemoteFiles(storageId, queueRemotePath.peekLast().getId());
+            }
         }
     }
 
@@ -287,14 +302,6 @@ public class ExplorerController implements Initializable, LostConnection {
         StringBuilder sb = new StringBuilder();
         queueRemotePath.forEach(item -> sb.append(item.getName()));
         pathRemoteTextField.setText(sb.toString());
-    }
-
-    private String getParentPath(String path) {
-        try {
-            return Paths.get(path + "/..").toRealPath().toString();
-        } catch (IOException ignore) {
-        }
-        return path;
     }
 
     public void refreshLocal() {
@@ -305,11 +312,11 @@ public class ExplorerController implements Initializable, LostConnection {
         getRemoteFiles(storageId, currentRemoteDirId);
     }
 
-    private Set<File> getCollisionsBeforeCopy(List<File> selectedFiles, List<File> oppositeDirFiles) {
-        return selectedFiles
+    private Set<File> getCollisionsBeforeCopy(List<File> oppositeFiles, List<File> selectedFiles) {
+        return oppositeFiles
                 .stream()
                 .distinct()
-                .filter(oppositeDirFiles::contains)
+                .filter(selectedFiles::contains)
                 .collect(Collectors.toSet());
     }
 
@@ -317,26 +324,22 @@ public class ExplorerController implements Initializable, LostConnection {
         StringBuilder message = new StringBuilder();
         message.append("This files/folders already exists in opposite directory.\n");
         message.append("Do you want to replace them with the ones you are copying?\n\n");
-        duplicates.forEach(file -> {
-            message
-                    .append(" - ")
-                    .append(file.getName())
-                    .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
-                    .append("\n");
-        });
+        duplicates.forEach(file -> message
+                .append(" - ")
+                .append(file.getName())
+                .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
+                .append("\n"));
         return FXAlert.showConfirmed(message.toString());
     }
 
     private boolean showDeleteConfirm(List<File> files) {
         StringBuilder message = new StringBuilder();
-        message.append("Do you want to move all to the bin?\n\n");
-        files.forEach(file -> {
-            message
-                    .append(" - ")
-                    .append(file.getName())
-                    .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
-                    .append("\n");
-        });
+        message.append("Do you want to delete them all?\n\n");
+        files.forEach(file -> message
+                .append(" - ")
+                .append(file.getName())
+                .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
+                .append("\n"));
         return FXAlert.showConfirmed(message.toString());
     }
 
@@ -344,7 +347,14 @@ public class ExplorerController implements Initializable, LostConnection {
         if (isActiveLocalTableView) {
             final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
             if (selectedLocalFiles.isEmpty()) {
+                FXAlert.showInfo("Please, choose files to delete.");
                 return;
+            } else {
+                selectedLocalFiles.removeIf(file -> !file.getIsReady());
+                if (selectedLocalFiles.isEmpty()) {
+                    FXAlert.showInfo("Incompletely downloaded files cannot be deleted.");
+                    return;
+                }
             }
 
             final boolean answerDelete = showDeleteConfirm(selectedLocalFiles);
@@ -364,12 +374,26 @@ public class ExplorerController implements Initializable, LostConnection {
         if (isActiveRemoteTableView) {
             final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
             if (selectedRemoteFiles.isEmpty()) {
+                FXAlert.showInfo("Please, choose files to delete.");
                 return;
+            } else {
+                selectedRemoteFiles.removeIf(file -> !file.getIsReady());
+                if (selectedRemoteFiles.isEmpty()) {
+                    FXAlert.showInfo("Incompletely uploaded files cannot be deleted.");
+                    return;
+                }
             }
 
             final boolean answerDelete = showDeleteConfirm(selectedRemoteFiles);
             if (!answerDelete) {
                 return;
+            }
+
+            for (File remoteFile : selectedRemoteFiles) {
+                final FileRequestMessage fileRequestMessage = new FileRequestMessage();
+                fileRequestMessage.setFile(remoteFile);
+                fileRequestMessage.setType(FileRequestMessage.Type.DELETE);
+                clientService.sendMessage(fileRequestMessage);
             }
         }
     }
@@ -418,10 +442,11 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void showDownloadSpinner(boolean flag) {
-        if (flag && !downloadSpinnerExist) {
+        final boolean activeDownloadsExist = downloadsController.isActiveDownloadsExist();
+        if (!activeDownloadsExist && flag && !downloadSpinnerExist) {
             downloadSpinnerExist = true;
             downloadHBox.getChildren().add(downloadSpinner);
-        } else if (downloadSpinnerExist) {
+        } else if (downloadSpinnerExist && !activeDownloadsExist) {
             downloadSpinnerExist = false;
             downloadHBox.getChildren().remove(downloadSpinner);
         }
