@@ -5,7 +5,9 @@ import javafx.collections.ObservableList;
 import ru.gb.storage.commons.io.File;
 
 
+import java.awt.*;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,7 +15,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class FileManager {
+public class LocalFileManager {
+
+    public static String FS_SEPARATOR = FileSystems.getDefault().getSeparator();
+
     public ObservableList<File> getLocalFiles(String path) {
         final ObservableList<File> files = FXCollections.observableArrayList();
 
@@ -53,6 +58,12 @@ public class FileManager {
             Files.createDirectories(path);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void moveFilesToTheBin(List<File> selectedLocalFiles) {
+        for (File file : selectedLocalFiles) {
+            Desktop.getDesktop().moveToTrash(Path.of(file.getPath()).toFile());
         }
     }
 }

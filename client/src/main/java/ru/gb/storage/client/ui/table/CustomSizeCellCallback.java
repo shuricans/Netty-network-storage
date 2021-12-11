@@ -6,6 +6,9 @@ import javafx.scene.paint.Color;
 import javafx.util.Callback;
 import ru.gb.storage.commons.io.File;
 
+import java.text.CharacterIterator;
+import java.text.StringCharacterIterator;
+
 
 public class CustomSizeCellCallback implements Callback<TableColumn<File, String>, TableCell<File, String>> {
     @Override
@@ -26,7 +29,7 @@ public class CustomSizeCellCallback implements Callback<TableColumn<File, String
                     if (isDir) {
                         setText("");
                     } else {
-                        setText(Long.toString(size));
+                        setText(humanReadableByteCountSI(size));
                     }
                 } else {
                     setText("");
@@ -34,5 +37,17 @@ public class CustomSizeCellCallback implements Callback<TableColumn<File, String
                 }
             }
         };
+    }
+
+    public String humanReadableByteCountSI(long bytes) {
+        if (-1000 < bytes && bytes < 1000) {
+            return bytes + " B";
+        }
+        CharacterIterator ci = new StringCharacterIterator("kMGTPE");
+        while (bytes <= -999_950 || bytes >= 999_950) {
+            bytes /= 1000;
+            ci.next();
+        }
+        return String.format("%.1f %cB", bytes / 1000.0, ci.current());
     }
 }

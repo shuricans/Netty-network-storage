@@ -1,18 +1,17 @@
 package ru.gb.storage.commons.message;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @NoArgsConstructor
-@Setter
+@AllArgsConstructor
 @Getter
-public class FileTransferMessage extends Message {
+@Setter
+public class FileTransferProgressMessage extends Message {
     private long fileId;
-    private byte[] content;
-    private long startPosition;
     private int progress;
-    private boolean isDone;
     private String destPath;
-    private String realPath;
+    private boolean isDone;
 }

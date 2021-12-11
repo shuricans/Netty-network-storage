@@ -2,7 +2,6 @@ package ru.gb.storage.client.netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -11,6 +10,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import lombok.RequiredArgsConstructor;
+import ru.gb.storage.client.ui.controller.DownloadsController;
 import ru.gb.storage.client.ui.controller.ExplorerController;
 import ru.gb.storage.client.ui.controller.LoginController;
 import ru.gb.storage.commons.handler.JsonDecoder;
@@ -22,11 +22,13 @@ import java.util.concurrent.ExecutorService;
 @RequiredArgsConstructor
 public final class Client implements Runnable {
 
+    private final ClientService clientService;
     private final int port;
     private final String inetHost;
     private final ExecutorService executorService;
     private final LoginController loginController;
     private final ExplorerController explorerController;
+    private final DownloadsController downloadsController;
     private SocketChannel channel;
 
     @Override
@@ -52,9 +54,11 @@ public final class Client implements Runnable {
                                     new JsonDecoder(),
                                     new JsonEncoder(),
                                     new ClientMessageHandler(
+                                            clientService,
                                             executorService,
                                             loginController,
-                                            explorerController
+                                            explorerController,
+                                            downloadsController
                                     )
                             );
                         }
@@ -62,19 +66,19 @@ public final class Client implements Runnable {
             // Start the client.
             Channel channel = bootstrap.connect(inetHost, port).sync().channel();
             System.out.println("Client started...");
-            loginController.setClient(this);
-            explorerController.setClient(this);
+            clientService.connectionResponseEvent(true);
 
             // Wait until the connection is closed.
             channel.closeFuture().sync();
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
+            clientService.connectionResponseEvent(false);
             e.printStackTrace();
         } finally {
             workerGroup.shutdownGracefully();
         }
     }
 
-    public ChannelFuture sendMessage(Message msg) {
-        return channel.writeAndFlush(msg);
+    public void sendMessage(Message msg) {
+        channel.writeAndFlush(msg);
     }
 }

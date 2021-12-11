@@ -3,6 +3,7 @@ package ru.gb.storage.server;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import ru.gb.storage.commons.io.File;
 import ru.gb.storage.commons.message.*;
 import ru.gb.storage.io.FileManager;
@@ -16,11 +17,14 @@ import ru.gb.storage.service.UserService;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
+
+import static ru.gb.storage.commons.Constant.BUFFER_SIZE;
 
 @AllArgsConstructor
 public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
@@ -31,10 +35,12 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     private final StorageService storageService;
     private final FileService fileService;
 
-    private static final int BUFFER_SIZE = 64 * 1024;
-
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
+
+        if (msg instanceof PingMessage) {
+            ctx.writeAndFlush(msg);
+        }
 
         if (msg instanceof SignMessage) {
             var message = (SignMessage) msg;
@@ -74,11 +80,18 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
 
         if (msg instanceof FileTransferMessage) {
             var message = (FileTransferMessage) msg;
-            try(RandomAccessFile raf = new RandomAccessFile(message.getPath(), "rw")) {
+            try (RandomAccessFile raf = new RandomAccessFile(message.getRealPath(), "rw")) {
                 raf.seek(message.getStartPosition());
                 raf.write(message.getContent());
-                if (message.getIsDone()) {
-                    System.out.println("File transfer is finished");
+                if (message.getProgress() >= 0) {
+                    ctx.writeAndFlush(
+                            new FileTransferProgressMessage(
+                                    message.getFileId(),
+                                    message.getProgress(),
+                                    message.getDestPath(),
+                                    message.isDone()
+                            )
+                    );
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -127,7 +140,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             // now we have our virtual directory id
             // and we send specific message to client
             // give all files in this directory
-            message.setType(FileRequestType.GET);
+            message.setType(FileRequestMessage.Type.GET);
             message.getFile().setId(virtualDirId);
         } else { // if regular file
             final File futureFileOnServer = new File();
@@ -149,7 +162,7 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             final long id = fileService.addNewFile(futureFileOnServer);
 
             message.getFile().setId(id);
-            message.setPath(futureFileOnServer.getPath());
+            message.setRealPath(futureFileOnServer.getPath());
         }
         ctx.writeAndFlush(message);
     }
@@ -161,42 +174,53 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
             final File dir = fileService.getFileById(file.getId());
             final List<File> files = fileService.getFilesByDir(dir);
             final NestedFilesRequestMessage nestedFilesRequestMessage =
-                    new NestedFilesRequestMessage(files, message.getPath());
+                    new NestedFilesRequestMessage(files, message.getDestPath());
             ctx.writeAndFlush(nestedFilesRequestMessage);
             return;
         }
-        executor.execute(() -> {
-            try (final RandomAccessFile raf = new RandomAccessFile(file.getPath(), "r")) {
-                final long fileLength = raf.length();
-                boolean isDone = false;
-                do {
-                    final long filePointer = raf.getFilePointer();
-                    final long availableBytes = fileLength - filePointer;
-
-                    byte[] buffer;
-
-                    if (availableBytes >= BUFFER_SIZE) {
-                        buffer = new byte[BUFFER_SIZE];
-                    } else {
-                        buffer = new byte[(int) availableBytes];
-                        isDone = true;
-                    }
-
-                    raf.read(buffer);
-
-                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
-
-                    fileTransferMessage.setContent(buffer);
-                    fileTransferMessage.setStartPosition(filePointer);
-                    fileTransferMessage.setIsDone(isDone);
-                    fileTransferMessage.setPath(message.getPath());
-
-                    ctx.writeAndFlush(fileTransferMessage).sync();
-                } while (raf.getFilePointer() < fileLength);
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        });
+        executor.execute(new FileUploader(ctx, message));
+//        executor.execute(() -> {
+//            try (final RandomAccessFile raf = new RandomAccessFile(file.getPath(), "r")) {
+//                final long fileLength = raf.length();
+//                boolean isDone = false;
+//                int progress = -1;
+//
+//                do {
+//                    final long filePointer = raf.getFilePointer();
+//                    final long availableBytes = fileLength - filePointer;
+//
+//                    byte[] buffer;
+//
+//                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
+//                    int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
+//
+//                    if (availableBytes >= BUFFER_SIZE) {
+//                        buffer = new byte[BUFFER_SIZE];
+//                        if (currentProgress % 5 == 0 && currentProgress > progress) {
+//                            progress = currentProgress;
+//                            fileTransferMessage.setProgress(progress);
+//                        } else {
+//                            fileTransferMessage.setProgress(-1);
+//                        }
+//                    } else {
+//                        buffer = new byte[(int) availableBytes];
+//                        isDone = true;
+//                    }
+//
+//                    raf.read(buffer);
+//
+//
+//                    fileTransferMessage.setContent(buffer);
+//                    fileTransferMessage.setStartPosition(filePointer);
+//                    fileTransferMessage.setDone(isDone);
+//                    fileTransferMessage.setDestPath(message.getRealPath());
+//
+//                    ctx.writeAndFlush(fileTransferMessage).sync();
+//                } while (raf.getFilePointer() < fileLength);
+//            } catch (IOException | InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        });
     }
 
     private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
@@ -261,6 +285,58 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
         message.setSuccess(true);
         message.setStorageId(newStorage.getId());
         message.setRootDirId(rootDirId);
+    }
+
+    @RequiredArgsConstructor
+    private static class FileUploader implements Runnable {
+
+        private final ChannelHandlerContext ctx;
+        private final FileRequestMessage message;
+        private int progress = -1;
+
+        @Override
+        public void run() {
+            try (final RandomAccessFile raf = new RandomAccessFile(message.getFile().getPath(), "r")) {
+                final long fileLength = raf.length();
+                boolean isDone = false;
+                do {
+                    final long filePointer = raf.getFilePointer();
+                    final long availableBytes = fileLength - filePointer;
+
+                    byte[] buffer;
+
+                    final FileTransferMessage fileTransferMessage = new FileTransferMessage();
+                    int currentProgress = (int) ((filePointer / (fileLength * 1f)) * 100);
+
+                    if (availableBytes >= BUFFER_SIZE) {
+                        buffer = new byte[BUFFER_SIZE];
+                        if (currentProgress % 5 == 0 && currentProgress > progress) {
+                            progress = currentProgress;
+                            fileTransferMessage.setProgress(progress);
+                        } else {
+                            fileTransferMessage.setProgress(-1);
+                        }
+                    } else {
+                        buffer = new byte[(int) availableBytes];
+                        isDone = true;
+                        fileTransferMessage.setProgress(100);
+                    }
+
+                    raf.read(buffer);
+
+                    fileTransferMessage.setFileId(message.getFile().getId());
+                    fileTransferMessage.setContent(buffer);
+                    fileTransferMessage.setStartPosition(filePointer);
+                    fileTransferMessage.setDone(isDone);
+                    fileTransferMessage.setDestPath(message.getDestPath());
+                    fileTransferMessage.setRealPath(message.getRealPath());
+
+                    ctx.writeAndFlush(fileTransferMessage).sync();
+                } while (raf.getFilePointer() < fileLength);
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }

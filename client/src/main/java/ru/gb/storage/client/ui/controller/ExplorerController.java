@@ -5,32 +5,38 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import ru.gb.storage.client.io.FileManager;
-import ru.gb.storage.client.netty.Client;
+import ru.gb.storage.client.io.LocalFileManager;
+import ru.gb.storage.client.netty.ClientService;
 import ru.gb.storage.client.ui.table.CustomNameCellCallback;
 import ru.gb.storage.client.ui.table.CustomSizeCellCallback;
+import ru.gb.storage.client.utils.ConfigProperties;
 import ru.gb.storage.commons.io.File;
 import ru.gb.storage.commons.message.FileRequestMessage;
-import ru.gb.storage.commons.message.FileRequestType;
 
+import java.awt.*;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.ResourceBundle;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Setter
-public class ExplorerController implements Initializable {
+public class ExplorerController implements Initializable, LostConnection {
 
     @FXML
     private TextField pathLocalTextField;
@@ -49,24 +55,31 @@ public class ExplorerController implements Initializable {
     private TableColumn<File, String> remoteNameTableColumn;
     @FXML
     private TableColumn<File, String> remoteSizeTableColumn;
+    @FXML
+    private HBox downloadHBox;
 
     @FXML
     private Button buttonCopy;
 
-    private Client client;
+    private ClientService clientService;
     private ObservableList<File> localFiles;
     private ObservableList<File> remoteFiles;
-    private FileManager localFileManager;
+    private LocalFileManager localFileManager;
     private ScreenController screenController;
     private long storageId;
     private long rootDirId;
     private long currentRemoteDirId;
     private Stage stage;
+    private LoginController loginController;
 
     private boolean isActiveLocalTableView = false;
     private boolean isActiveRemoteTableView = false;
 
+    private boolean downloadSpinnerExist = false;
+
     private final LinkedList<IdName> queueRemotePath = new LinkedList<>();
+
+    private ProgressIndicator downloadSpinner;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -76,18 +89,17 @@ public class ExplorerController implements Initializable {
         remoteTableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         remoteTableView.setPlaceholder(new Label("This directory is empty..."));
 
+
         localNameTableColumn.setCellFactory(new CustomNameCellCallback());
         localSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
+        localNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+
 
         remoteNameTableColumn.setCellFactory(new CustomNameCellCallback());
         remoteSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
+        remoteNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
 
-        localFileManager = new FileManager();
-        final String userHome = System.getProperty("user.home");
-        localFiles = localFileManager.getLocalFiles(userHome);
-        pathLocalTextField.setText(userHome);
-
-        localTableView.setItems(localFiles);
+        localFileManager = new LocalFileManager();
 
         localTableView.setRowFactory(tv -> {
             TableRow<File> row = new TableRow<>();
@@ -108,7 +120,7 @@ public class ExplorerController implements Initializable {
                 if (event.getClickCount() == 2 && (!row.isEmpty())) {
                     File remoteFile = row.getItem();
                     if (remoteFile.getIsDirectory()) {
-                        String s = currentRemoteDirId == rootDirId ? "" : "/";
+                        String s = currentRemoteDirId == rootDirId ? "" : LocalFileManager.FS_SEPARATOR;
                         queueRemotePath.addLast(
                                 new IdName(
                                         remoteFile.getId(),
@@ -124,6 +136,10 @@ public class ExplorerController implements Initializable {
 
         remoteFiles = FXCollections.observableArrayList();
         remoteTableView.setItems(remoteFiles);
+
+        downloadSpinner = new ProgressIndicator();
+        downloadSpinner.setPrefWidth(23);
+        downloadSpinner.setPrefHeight(18);
     }
 
     private void reloadLocalFiles(String path) {
@@ -151,22 +167,29 @@ public class ExplorerController implements Initializable {
     public void getRemoteFiles(long storageId, long parentDirId) {
         currentRemoteDirId = parentDirId;
         final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-        fileRequestMessage.setType(FileRequestType.GET);
+        fileRequestMessage.setType(FileRequestMessage.Type.GET);
         fileRequestMessage.setParentDirId(parentDirId);
         fileRequestMessage.setStorageId(storageId);
-        client.sendMessage(fileRequestMessage);
+        clientService.sendMessage(fileRequestMessage);
     }
 
     public void postInit(String login, long storageId, long rootDirId) {
         this.storageId = storageId;
         this.rootDirId = rootDirId;
-        stage.setTitle("Netty-network-storage: " + login);
-        queueRemotePath.addFirst(new IdName(rootDirId, "/"));
+        final String prevTitle = stage.getTitle();
+        stage.setTitle(prevTitle + ": " + login);
+        queueRemotePath.addFirst(new IdName(rootDirId, LocalFileManager.FS_SEPARATOR));
         getRemoteFiles(storageId, rootDirId);
+
+        final String userHome = System.getProperty("user.home");
+        localFiles = localFileManager.getLocalFiles(userHome);
+        pathLocalTextField.setText(userHome);
+
+        localTableView.setItems(localFiles);
     }
 
     public void copy() {
-        if (isActiveLocalTableView) {
+        if (isActiveLocalTableView) { // user wants upload this selected items to server
             final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
             if (selectedLocalFiles.isEmpty()) {
                 return;
@@ -188,15 +211,20 @@ public class ExplorerController implements Initializable {
 
             for (File localFile : selectedLocalFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-                fileRequestMessage.setType(FileRequestType.UPLOAD);
                 fileRequestMessage.setFile(localFile);
-                fileRequestMessage.setStorageId(storageId);
+                fileRequestMessage.setType(FileRequestMessage.Type.UPLOAD);
                 fileRequestMessage.setParentDirId(currentRemoteDirId);
-                client.sendMessage(fileRequestMessage);
+                fileRequestMessage.setStorageId(storageId);
+                if (LocalFileManager.FS_SEPARATOR.equals(pathRemoteTextField.getText())) {
+                    fileRequestMessage.setDestPath(LocalFileManager.FS_SEPARATOR + localFile.getName());
+                } else {
+                    fileRequestMessage.setDestPath(Path.of(pathRemoteTextField.getText(), localFile.getName()).toString());
+                }
+                clientService.sendMessage(fileRequestMessage);
             }
             return;
         }
-        if (isActiveRemoteTableView) {
+        if (isActiveRemoteTableView) { // user wants download this selected items from server
             final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
             if (selectedRemoteFiles.isEmpty()) {
                 return;
@@ -219,12 +247,14 @@ public class ExplorerController implements Initializable {
             final String currentLocalPath = pathLocalTextField.getText();
             for (File remoteFile : selectedRemoteFiles) {
                 final FileRequestMessage fileRequestMessage = new FileRequestMessage();
-                fileRequestMessage.setType(FileRequestType.DOWNLOAD);
-                fileRequestMessage.setStorageId(storageId);
                 fileRequestMessage.setFile(remoteFile);
-                String path = Paths.get(currentLocalPath, remoteFile.getName()).toString();
-                fileRequestMessage.setPath(path);
-                client.sendMessage(fileRequestMessage);
+                fileRequestMessage.setType(FileRequestMessage.Type.DOWNLOAD);
+                fileRequestMessage.setParentDirId(currentRemoteDirId);
+                fileRequestMessage.setStorageId(storageId);
+                String destPath = Paths.get(currentLocalPath, remoteFile.getName()).toString();
+                fileRequestMessage.setDestPath(destPath);
+                fileRequestMessage.setRealPath(remoteFile.getPath());
+                clientService.sendMessage(fileRequestMessage);
             }
         }
     }
@@ -291,10 +321,110 @@ public class ExplorerController implements Initializable {
             message
                     .append(" - ")
                     .append(file.getName())
-                    .append(file.getIsDirectory() ? "/" : "")
+                    .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
                     .append("\n");
         });
         return FXAlert.showConfirmed(message.toString());
+    }
+
+    private boolean showDeleteConfirm(List<File> files) {
+        StringBuilder message = new StringBuilder();
+        message.append("Do you want to move all to the bin?\n\n");
+        files.forEach(file -> {
+            message
+                    .append(" - ")
+                    .append(file.getName())
+                    .append(file.getIsDirectory() ? LocalFileManager.FS_SEPARATOR : "")
+                    .append("\n");
+        });
+        return FXAlert.showConfirmed(message.toString());
+    }
+
+    public void deleteSelectedFiles() {
+        if (isActiveLocalTableView) {
+            final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
+            if (selectedLocalFiles.isEmpty()) {
+                return;
+            }
+
+            final boolean answerDelete = showDeleteConfirm(selectedLocalFiles);
+            if (!answerDelete) {
+                return;
+            }
+
+            try {
+                localFileManager.moveFilesToTheBin(selectedLocalFiles);
+            } catch (Exception e) {
+                FXAlert.showException(e, "Something went wrong...");
+            } finally {
+                refreshLocal();
+            }
+            return;
+        }
+        if (isActiveRemoteTableView) {
+            final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
+            if (selectedRemoteFiles.isEmpty()) {
+                return;
+            }
+
+            final boolean answerDelete = showDeleteConfirm(selectedRemoteFiles);
+            if (!answerDelete) {
+                return;
+            }
+        }
+    }
+
+    public void open() {
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setInitialDirectory(Path.of(System.getProperty("user.home")).toFile());
+        final java.io.File directory = directoryChooser.showDialog(stage);
+        reloadLocalFiles(directory.getAbsolutePath());
+    }
+
+    public void logout() {
+        pathLocalTextField.clear();
+        pathRemoteTextField.clear();
+        queueRemotePath.clear();
+        localFiles.clear();
+        remoteFiles.clear();
+        final Optional<String> title = ConfigProperties.getPropertyValue("title");
+        title.ifPresent(stage::setTitle);
+        screenController.activate("login");
+    }
+
+    public void close() {
+        stage.close();
+    }
+
+    public void openGithub() {
+        final Optional<String> github = ConfigProperties.getPropertyValue("github");
+        github.ifPresent(url -> {
+            try {
+                Desktop.getDesktop().browse(new URL(url).toURI());
+            } catch (IOException | URISyntaxException e) {
+                FXAlert.showInfo(url);
+            }
+        });
+    }
+
+    @Override
+    public void lostConnection() {
+        loginController.lostConnection();
+        logout();
+    }
+
+    public void showDownloadsDetails() {
+        screenController.activate("downloads");
+    }
+
+    public void showDownloadSpinner(boolean flag) {
+        if (flag && !downloadSpinnerExist) {
+            downloadSpinnerExist = true;
+            downloadHBox.getChildren().add(downloadSpinner);
+        } else if (downloadSpinnerExist) {
+            downloadSpinnerExist = false;
+            downloadHBox.getChildren().remove(downloadSpinner);
+        }
     }
 
     @AllArgsConstructor

@@ -2,27 +2,31 @@ package ru.gb.storage.client.ui.controller;
 
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@RequiredArgsConstructor
+@Getter
+@Setter
 public class ScreenController {
     private final Map<String, Pane> screenMap = new HashMap<>();
     private final Scene main;
+    private String active;
 
-    public ScreenController(Scene main) {
-        this.main = main;
-    }
-
-    public void add(String name, Pane pane){
+    public void add(String name, Pane pane) {
         screenMap.put(name, pane);
     }
 
-    public void remove(String name){
+    public void remove(String name) {
         screenMap.remove(name);
     }
 
-    public void activate(String name){
-        main.setRoot( screenMap.get(name) );
+    public void activate(String name) {
+        active = name;
+        main.setRoot(screenMap.get(name));
     }
 }
