@@ -26,6 +26,7 @@ public class DownloadsController implements Initializable, LostConnection {
     }
 
     public void addDownloadHBox(long fileId, DownloadHBox downloadHBox) {
+        rootVBox.getChildren().remove(downloadHBox);
         explorerController.showDownloadSpinner(true);
         downloadHBoxMap.put(fileId, downloadHBox);
         rootVBox.getChildren().add(downloadHBox);
@@ -38,15 +39,15 @@ public class DownloadsController implements Initializable, LostConnection {
     public void clear() {
         downloadHBoxMap.values()
                 .stream()
-                .filter(downloadHBox -> Double.compare(1d, downloadHBox.getProgressValue()) == 0)
+                .filter(DownloadHBox::isDone)
                 .forEach(rootVBox.getChildren()::remove);
-        downloadHBoxMap.entrySet().removeIf(entry -> Double.compare(1d, entry.getValue().getProgressValue()) == 0);
+        downloadHBoxMap.entrySet().removeIf(entry -> entry.getValue().isDone());
     }
 
     public boolean isActiveDownloadsExist() {
         return downloadHBoxMap.values()
                 .stream()
-                .anyMatch(downloadHBox -> Double.compare(1d, downloadHBox.getProgressValue()) != 0);
+                .anyMatch(downloadHBox -> !downloadHBox.isDone());
     }
 
     @Override

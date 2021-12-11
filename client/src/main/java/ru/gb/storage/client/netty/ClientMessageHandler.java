@@ -45,22 +45,17 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                 if (message.getProgress() >= 0) {
                     Platform.runLater(() -> {
                         DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
-                        if (downloadHBox == null) {
+                        if (downloadHBox == null || downloadHBox.isDone()) {
                             final DownloadHBox hBox = new DownloadHBox("download", message.getDestPath());
-                            hBox.init();
                             hBox.setProgressValue(message.getProgress() * .01d);
                             downloadsController.addDownloadHBox(message.getFileId(), hBox);
                             explorerController.refreshLocal();
                         } else {
-                            if (Double.compare(1d, downloadHBox.getProgressValue()) == 0) {
-                                explorerController.showDownloadSpinner(true);
-                            }
                             downloadHBox.setProgressValue(message.getProgress() * .01d);
                         }
-                        if (message.isDone()) {
-                            if (downloadHBox != null) {
-                                downloadHBox.setProgressValue(1d);
-                            }
+                        if (message.isDone() && downloadHBox != null) {
+                            downloadHBox.setProgressValue(1d);
+                            downloadHBox.setDone(true);
                             explorerController.refreshLocal();
                             localFileManager.markReady(message.getDestPath());
                             explorerController.refreshLocal();
@@ -79,15 +74,11 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
             Platform.runLater(() -> {
                 DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
                 if (downloadHBox != null) {
-                    if (Double.compare(1d, downloadHBox.getProgressValue()) == 0) {
-                        explorerController.showDownloadSpinner(true);
-                    }
                     downloadHBox.setProgressValue(message.getProgress() * .01d);
                 }
-                if (message.isDone()) {
-                    if (downloadHBox != null) {
-                        downloadHBox.setProgressValue(1d);
-                    }
+                if (message.isDone() && downloadHBox != null) {
+                    downloadHBox.setProgressValue(1d);
+                    downloadHBox.setDone(true);
                     explorerController.refreshRemote();
                     explorerController.showDownloadSpinner(false);
                 }
@@ -127,10 +118,10 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                 case UPLOAD: // server ready to accept this regular file
                     Platform.runLater(() -> {
                         final DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFile().getId());
-                        if (downloadHBox == null) {
+                        if (downloadHBox == null || downloadHBox.isDone()) {
                             final DownloadHBox hBox = new DownloadHBox("upload", message.getDestPath());
-                            hBox.init();
                             downloadsController.addDownloadHBox(message.getFile().getId(), hBox);
+                            explorerController.showDownloadSpinner(true);
                             explorerController.refreshRemote();
                         }
                     });

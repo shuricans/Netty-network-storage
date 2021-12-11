@@ -1,6 +1,7 @@
 package ru.gb.storage.client.ui.components;
 
-import javafx.beans.property.*;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -9,10 +10,10 @@ import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 
-@AllArgsConstructor
+@Setter
 @Getter
 public class DownloadHBox extends HBox {
 
@@ -20,16 +21,19 @@ public class DownloadHBox extends HBox {
     private final String type;
     private final String path;
     private final ProgressIndicator progressIndicator = new ProgressIndicator(.0);
+    private boolean isDone = false;
 
-    public final double getProgressValue() {
-        return progress.get();
+    public DownloadHBox(String type, String path) {
+        this.type = type;
+        this.path = path;
+        init();
     }
 
     public final void setProgressValue(double value) {
         progress.set(value);
     }
 
-    public void init() {
+    private void init() {
         setPrefHeight(50);
         setAlignment(Pos.CENTER_LEFT);
         setPadding(new Insets(5d));
