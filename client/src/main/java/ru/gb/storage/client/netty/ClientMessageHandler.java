@@ -1,5 +1,6 @@
 package ru.gb.storage.client.netty;
 
+import com.dustinredmond.fxalert.FXAlert;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import javafx.application.Platform;
@@ -163,6 +164,11 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                 case REMOTE:
                     Platform.runLater(explorerController::refreshRemote);
             }
+        }
+
+        if (msg instanceof ExceptionMessage) {
+            var message = (ExceptionMessage) msg;
+            Platform.runLater(() -> FXAlert.showError(message.getInfo()));
         }
 
         if (msg instanceof SignMessage) {

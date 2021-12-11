@@ -17,7 +17,9 @@ import ru.gb.storage.service.UserService;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -187,9 +189,30 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     }
 
     private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
-        fileService.delete(message.getFile());
-        final RefreshMessage refreshMessage = new RefreshMessage(RefreshMessage.Type.REMOTE);
-        ctx.writeAndFlush(refreshMessage);
+        final File file = message.getFile();
+        try {
+            // real deleting...
+            if (file.getIsDirectory()) {
+                LinkedList<File> stack = new LinkedList<>();
+                stack.add(file);
+                while (!stack.isEmpty()) {
+                    File f = stack.pop();
+                    if (f.getIsDirectory()) {
+                        stack.addAll(fileService.getFilesByDir(f));
+                    } else {
+                        Files.delete(Path.of(f.getPath()));
+                    }
+                }
+            } else {
+                Files.delete(Path.of(file.getPath()));
+            }
+            // remove all records from db
+            fileService.delete(file);
+            ctx.writeAndFlush(new RefreshMessage(RefreshMessage.Type.REMOTE));
+        } catch (IOException e) {
+            e.printStackTrace();
+            ctx.writeAndFlush(new ExceptionMessage(e.getMessage()));
+        }
     }
 
     private void signIn(SignMessage message) {
