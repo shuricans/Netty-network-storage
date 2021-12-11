@@ -96,7 +96,7 @@ public class ExplorerController implements Initializable, LostConnection {
         remoteSizeTableColumn.setCellFactory(new CustomSizeCellCallback());
         remoteNameTableColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
 
-        localFileManager = new LocalFileManager();
+
 
         localTableView.setRowFactory(tv -> {
             TableRow<File> row = new TableRow<>();
@@ -171,6 +171,7 @@ public class ExplorerController implements Initializable, LostConnection {
     }
 
     public void postInit(String login, long storageId, long rootDirId) {
+        localFileManager = new LocalFileManager(downloadsController);
         this.storageId = storageId;
         this.rootDirId = rootDirId;
         final String prevTitle = stage.getTitle();

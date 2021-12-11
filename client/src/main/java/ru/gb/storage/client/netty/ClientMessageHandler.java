@@ -32,7 +32,7 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
     private final LoginController loginController;
     private final ExplorerController explorerController;
     private final DownloadsController downloadsController;
-    private final LocalFileManager localFileManager = new LocalFileManager();
+    private final LocalFileManager localFileManager;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
@@ -46,18 +46,17 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
                     Platform.runLater(() -> {
                         DownloadHBox downloadHBox = downloadsController.getDownloadHBox(message.getFileId());
                         if (downloadHBox == null || downloadHBox.isDone()) {
-                            final DownloadHBox hBox = new DownloadHBox("download", message.getDestPath());
-                            hBox.setProgressValue(message.getProgress() * .01d);
-                            downloadsController.addDownloadHBox(message.getFileId(), hBox);
-                            explorerController.refreshLocal();
+                            downloadHBox = new DownloadHBox("download", message.getDestPath());
+                            downloadsController.addDownloadHBox(message.getFileId(), downloadHBox);
+                            if (!message.isDone()) {
+                                explorerController.refreshLocal();
+                            }
                         } else {
                             downloadHBox.setProgressValue(message.getProgress() * .01d);
                         }
-                        if (message.isDone() && downloadHBox != null) {
+                        if (message.isDone()) {
                             downloadHBox.setProgressValue(1d);
                             downloadHBox.setDone(true);
-                            explorerController.refreshLocal();
-                            localFileManager.markReady(message.getDestPath());
                             explorerController.refreshLocal();
                             explorerController.showDownloadSpinner(false);
                         }

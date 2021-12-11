@@ -2,6 +2,8 @@ package ru.gb.storage.client.io;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import lombok.AllArgsConstructor;
+import ru.gb.storage.client.ui.controller.DownloadsController;
 import ru.gb.storage.commons.io.File;
 
 import java.awt.*;
@@ -10,20 +12,24 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@AllArgsConstructor
 public class LocalFileManager {
 
     public static String FS_SEPARATOR = FileSystems.getDefault().getSeparator();
-    private final static Map<Path, List<File>> prevStateDir = new HashMap<>();
+    private final DownloadsController downloadsController;
 
     public ObservableList<File> getLocalFiles(String path) {
         final ObservableList<File> files = FXCollections.observableArrayList();
-
+        final List<String> activeDownloadsPaths = downloadsController.getAllActiveDownloadsPaths();
+        System.out.println();
+        System.out.println();
+        activeDownloadsPaths.forEach(System.out::println);
+        System.out.println();
+        System.out.println();
         try (final Stream<Path> paths = Files.list(Paths.get(path))) {
             final List<File> fileList = paths
                     .map(pth -> new File(
@@ -32,7 +38,7 @@ public class LocalFileManager {
                             pth.toString(),
                             getFileSize(pth),
                             Files.isDirectory(pth),
-                            true, //TODO
+                            true,
                             null,
                             null
                     ))
@@ -40,24 +46,13 @@ public class LocalFileManager {
                         if (file.getIsDirectory()) {
                             return true;
                         }
-                        final List<File> prevFiles = prevStateDir.get(Path.of(path));
-                        if (prevFiles != null) {
-                            if (!prevFiles.contains(file)) {
-                                file.setIsReady(false);
-                            } else {
-                                prevFiles.stream()
-                                        .filter(f -> f.equals(file))
-                                        .findFirst()
-                                        .ifPresent(prevFile -> {
-                                            file.setIsReady(prevFile.getIsReady());
-                                        });
-                            }
+                        if (activeDownloadsPaths.contains(file.getPath())) {
+                            file.setIsReady(false);
                         }
                         return true;
                     })
                     .collect(Collectors.toList());
             files.addAll(fileList);
-            prevStateDir.put(Path.of(path), fileList);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -87,18 +82,6 @@ public class LocalFileManager {
     public void moveFilesToTheBin(List<File> selectedLocalFiles) {
         for (File file : selectedLocalFiles) {
             Desktop.getDesktop().moveToTrash(Path.of(file.getPath()).toFile());
-        }
-    }
-
-    public void markReady(String destPath) {
-        final String fileName = Path.of(destPath).getFileName().toString();
-        final String parentPath = getParentPath(destPath);
-        final List<File> files = prevStateDir.get(Path.of(parentPath));
-
-        if (files != null) {
-            files.stream().filter(f ->
-                    fileName.equals(f.getName())
-            ).findFirst().ifPresent(f -> f.setIsReady(true));
         }
     }
 
