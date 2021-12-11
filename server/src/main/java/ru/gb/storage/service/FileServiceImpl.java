@@ -46,4 +46,9 @@ public class FileServiceImpl implements FileService {
     public void setReadyByFileId(long fileId) {
         fileDao.setReadyByFileId(fileId);
     }
+
+    @Override
+    public void delete(File file) {
+        fileDao.delete(file);
+    }
 }

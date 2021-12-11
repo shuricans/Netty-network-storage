@@ -50,7 +50,10 @@
                                                 <Tooltip text="Back" />
                                             </tooltip>
                                         </Button>
-                                        <TextField fx:id="pathLocalTextField" onAction="#pathLocalTextFieldOnAction" HBox.hgrow="ALWAYS" />
+                                        <TextField fx:id="pathLocalTextField" onAction="#pathLocalTextFieldOnAction" HBox.hgrow="ALWAYS">
+                                 <tooltip>
+                                    <Tooltip text="Local repo" />
+                                 </tooltip></TextField>
                                     </children>
                                 </HBox>
                                 <TableView fx:id="localTableView" onMouseReleased="#lastFocusLocalTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
@@ -77,7 +80,10 @@
                                                 <Tooltip text="Back" />
                                             </tooltip>
                                         </Button>
-                                        <TextField fx:id="pathRemoteTextField" editable="false" HBox.hgrow="ALWAYS" />
+                                        <TextField fx:id="pathRemoteTextField" editable="false" HBox.hgrow="ALWAYS">
+                                 <tooltip>
+                                    <Tooltip text="Remote repo" />
+                                 </tooltip></TextField>
                                     </children>
                                 </HBox>
                                 <TableView fx:id="remoteTableView" onMouseReleased="#lastFocusRemoteTable" prefHeight="200.0" prefWidth="200.0" VBox.vgrow="ALWAYS">
@@ -107,7 +113,7 @@
                         <Insets left="2.0" />
                     </HBox.margin>
                     <tooltip>
-                        <Tooltip text="Move selected files to bin" />
+                        <Tooltip text="Delete selected files" />
                     </tooltip>
                 </Button>
             <Separator orientation="VERTICAL">
@@ -117,7 +123,10 @@
             </Separator>
             <HBox fx:id="downloadHBox" alignment="CENTER">
                <children>
-                  <Hyperlink onAction="#showDownloadsDetails" text="downloads" />
+                  <Hyperlink onAction="#showDownloadsDetails" text="downloads">
+                     <tooltip>
+                        <Tooltip text="Show all downloads" />
+                     </tooltip></Hyperlink>
                </children>
             </HBox>
             <Separator orientation="VERTICAL">

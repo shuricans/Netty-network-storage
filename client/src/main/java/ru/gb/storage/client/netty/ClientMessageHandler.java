@@ -154,6 +154,17 @@ public class ClientMessageHandler extends SimpleChannelInboundHandler<Message> {
             }
         }
 
+        if (msg instanceof RefreshMessage) {
+            var message = (RefreshMessage) msg;
+            switch (message.getType()) {
+                case LOCAL:
+                    Platform.runLater(explorerController::refreshLocal);
+                    break;
+                case REMOTE:
+                    Platform.runLater(explorerController::refreshRemote);
+            }
+        }
+
         if (msg instanceof SignMessage) {
             var message = (SignMessage) msg;
             Platform.runLater(() -> loginController.auth(message));

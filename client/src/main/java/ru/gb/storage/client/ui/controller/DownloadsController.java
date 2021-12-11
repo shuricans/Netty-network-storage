@@ -2,8 +2,6 @@ package ru.gb.storage.client.ui.controller;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.geometry.Orientation;
-import javafx.scene.control.Separator;
 import javafx.scene.layout.VBox;
 import lombok.Setter;
 import ru.gb.storage.client.ui.components.DownloadHBox;
@@ -11,7 +9,6 @@ import ru.gb.storage.client.ui.components.DownloadHBox;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.ResourceBundle;
 
 @Setter

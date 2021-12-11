@@ -187,7 +187,9 @@ public class ServerMessageHandler extends SimpleChannelInboundHandler<Message> {
     }
 
     private void deleteEventHandler(ChannelHandlerContext ctx, FileRequestMessage message) {
-
+        fileService.delete(message.getFile());
+        final RefreshMessage refreshMessage = new RefreshMessage(RefreshMessage.Type.REMOTE);
+        ctx.writeAndFlush(refreshMessage);
     }
 
     private void signIn(SignMessage message) {

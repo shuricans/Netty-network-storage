@@ -322,7 +322,7 @@ public class ExplorerController implements Initializable, LostConnection {
 
     private boolean showDeleteConfirm(List<File> files) {
         StringBuilder message = new StringBuilder();
-        message.append("Do you want to move all to the bin?\n\n");
+        message.append("Do you want to delete them all?\n\n");
         files.forEach(file -> {
             message
                     .append(" - ")
@@ -337,7 +337,14 @@ public class ExplorerController implements Initializable, LostConnection {
         if (isActiveLocalTableView) {
             final ObservableList<File> selectedLocalFiles = localTableView.getSelectionModel().getSelectedItems();
             if (selectedLocalFiles.isEmpty()) {
+                FXAlert.showInfo("Please, choose files to delete.");
                 return;
+            } else {
+                selectedLocalFiles.removeIf(file -> !file.getIsReady());
+                if (selectedLocalFiles.isEmpty()) {
+                    FXAlert.showInfo("Incompletely downloaded files cannot be deleted.");
+                    return;
+                }
             }
 
             final boolean answerDelete = showDeleteConfirm(selectedLocalFiles);
@@ -357,12 +364,26 @@ public class ExplorerController implements Initializable, LostConnection {
         if (isActiveRemoteTableView) {
             final ObservableList<File> selectedRemoteFiles = remoteTableView.getSelectionModel().getSelectedItems();
             if (selectedRemoteFiles.isEmpty()) {
+                FXAlert.showInfo("Please, choose files to delete.");
                 return;
+            } else {
+                selectedRemoteFiles.removeIf(file -> !file.getIsReady());
+                if (selectedRemoteFiles.isEmpty()) {
+                    FXAlert.showInfo("Incompletely uploaded files cannot be deleted.");
+                    return;
+                }
             }
 
             final boolean answerDelete = showDeleteConfirm(selectedRemoteFiles);
             if (!answerDelete) {
                 return;
+            }
+
+            for (File remoteFile : selectedRemoteFiles) {
+                final FileRequestMessage fileRequestMessage = new FileRequestMessage();
+                fileRequestMessage.setFile(remoteFile);
+                fileRequestMessage.setType(FileRequestMessage.Type.DELETE);
+                clientService.sendMessage(fileRequestMessage);
             }
         }
     }
