@@ -1,4 +1,4 @@
-# Simple network storage based [Netty](https://netty.io/) - "Netty-network-storage"
+# Simple network storage based [Netty](https://netty.io/)
 
 ### Hello :)  
 This is my study pet-project of network file storage. 
@@ -19,7 +19,7 @@ Teacher: [Lezenford](https://github.com/Lezenford)
 
 ### How run this project?
 
-######1. First way - Docker (backend), IDEA (frontend):
+##### 1. First way - Docker (backend), IDEA (frontend):
 * be sure you have docker installed.
 * grab `docker-compose.yml` from root directory.
 * volumes: 
@@ -37,7 +37,7 @@ Teacher: [Lezenford](https://github.com/Lezenford)
 * `cd client`
 * `mvn javafx:run`
 
-######2. Second way - IntelliJ IDEA:
+##### 2. Second way - IntelliJ IDEA:
 * required versions:
   * JDK11
   * maven 3.8.3
