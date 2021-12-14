@@ -26,7 +26,7 @@ Teacher: [Lezenford](https://github.com/Lezenford)
   * in `server` part you can mapping your path instead of `./storage`
 `volumes: - ./storage:/storage/root`  
 * you can also change port forwarding in `server` - `8080` by default.
-* run `docker compose up -d`
+* run `docker-compose up -d`
 * that's all, you have started db and server containers.
 * check them status through `docker stats`  
   IntelliJ IDEA (frontend):
